@@ -127,15 +127,15 @@ class SyndicateGamesSheetRepository {
 
   _formatGameRow(sheet, rowNumber, selectedNumbers) {
     const selectedSet = new Set(selectedNumbers);
+    const backgrounds = [];
 
     for (let col = 1; col <= 60; col++) {
       const cell = sheet.getRange(rowNumber, col);
       const number = Number(cell.getValue());
-
-      if (selectedSet.has(number)) {
-        cell.setBackground(MS_CONFIG.SELECTED_COLOR);
-      }
+      backgrounds.push(selectedSet.has(number) ? MS_CONFIG.SELECTED_COLOR : '#FFFFFF');
     }
+
+    sheet.getRange(rowNumber, 1, 1, 60).setBackgrounds([backgrounds]);
   }
 
   _extractDrawnNumbers(row) {
@@ -165,12 +165,10 @@ class SyndicateGamesSheetRepository {
   }
 
   _clearFormattingForNewGame(sheet, rowNumber) {
-    for (let col = 1; col <= 68; col++) {
-      const cell = sheet.getRange(rowNumber, col);
-      cell.setBackground('#FFFFFF');
-      cell.setFontWeight('normal');
-      cell.setFontStyle('normal');
-    }
+    const range = sheet.getRange(rowNumber, 1, 1, 68);
+    range.setBackground('#FFFFFF');
+    range.setFontWeight('normal');
+    range.setFontStyle('normal');
   }
 
   _getSheet() {
