@@ -48,31 +48,40 @@ class SyndicateGamesSheetService {
       return { updatedLines: 0 };
     }
 
-    let updatedLines = 0;
     const contestsByNumber = new Map();
-
     contests.forEach((contest) => {
       contestsByNumber.set(contest.number, contest);
     });
 
-    const contestNumbers = Array.from(contestsByNumber.keys());
+    const sheet = this.gamesRepository._getSheet();
+    const values = sheet.getDataRange().getValues();
 
-    for (const contestNumber of contestNumbers) {
-      const games = this.gamesRepository.getGamesByContest(contestNumber);
+    if (values.length === 0) {
+      return { updatedLines: 0 };
+    }
 
-      if (games.length === 0) {
+    let updatedLines = 0;
+    const frozenRows = sheet.getFrozenRows();
+    const startIndex = frozenRows > 0 ? 1 : 0;
+    const contestColIndex = 66;
+
+    for (let i = startIndex; i < values.length; i++) {
+      const row = values[i];
+      const contestNumber = row[contestColIndex];
+      const contest = contestsByNumber.get(contestNumber);
+
+      if (!contest) {
         continue;
       }
 
-      const contest = contestsByNumber.get(contestNumber);
+      const drawnNumbers = this.gamesRepository._extractDrawnNumbers(row);
+      const rowIndex = i + 1;
 
-      for (const game of games) {
-        if (game.drawnNumbers.length === 0) {
-          const selectedNumbers = this._extractSelectedNumbers(game.rowIndex);
-          this.gamesRepository.updateGameResult(game.rowIndex, contest.drawnNumbers);
-          this._formatResultRow(game.rowIndex, selectedNumbers, contest.drawnNumbers);
-          updatedLines++;
-        }
+      if (drawnNumbers.length === 0) {
+        this.gamesRepository.updateGameResult(rowIndex, contest.drawnNumbers);
+        const selectedNumbers = this.gamesRepository._extractSelectedNumbers(rowIndex);
+        this._formatResultRow(rowIndex, selectedNumbers, contest.drawnNumbers);
+        updatedLines++;
       }
     }
 
