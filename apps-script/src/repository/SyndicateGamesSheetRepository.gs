@@ -20,15 +20,12 @@ class SyndicateGamesSheetRepository {
 
     const sheet = this._getSheet();
 
-    const insertionRow = sheet.getFrozenRows() > 0 ? sheet.getFrozenRows() + 1 : 1;
-    sheet.insertRowsBefore(insertionRow, games.length);
-
     for (let i = 0; i < games.length; i++) {
-      const rowNum = insertionRow + i;
-      this._clearFormattingForNewGame(sheet, rowNum);
       const row = this._gameToRow(games[i]);
-      sheet.getRange(rowNum, 1, 1, row.length).setValues([row]);
-      this._formatGameRow(sheet, rowNum, games[i].selectedNumbers);
+      sheet.appendRow(row);
+      const lastRow = sheet.getLastRow();
+      this._clearFormattingForNewGame(sheet, lastRow);
+      this._formatGameRow(sheet, lastRow, games[i].selectedNumbers);
     }
   }
 
