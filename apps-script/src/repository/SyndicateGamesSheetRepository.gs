@@ -19,7 +19,6 @@ class SyndicateGamesSheetRepository {
     }
 
     const sheet = this._getSheet();
-    this._ensureHeaders(sheet);
 
     const insertionRow = sheet.getFrozenRows() > 0 ? sheet.getFrozenRows() + 1 : 1;
     sheet.insertRowsBefore(insertionRow, games.length);
@@ -186,24 +185,4 @@ class SyndicateGamesSheetRepository {
     return sheet;
   }
 
-  _ensureHeaders(sheet) {
-    if (sheet.getLastRow() === 0) {
-      const headers = this._generateHeaders();
-      sheet.appendRow(headers);
-      sheet.setFrozenRows(1);
-    }
-  }
-
-  _generateHeaders() {
-    const headers = [];
-    for (let i = 1; i <= 60; i++) {
-      headers.push(i.toString());
-    }
-    for (let i = 1; i <= 6; i++) {
-      headers.push(`Sorteado ${i}`);
-    }
-    headers.push('Concurso');
-    headers.push('Data');
-    return headers;
-  }
 }
