@@ -19,13 +19,15 @@ class SyndicateGamesSheetRepository {
     }
 
     const sheet = this._getSheet();
+    const rows = games.map(game => this._gameToRow(game));
 
+    sheet.appendRows(rows);
+
+    const firstNewRow = sheet.getLastRow() - games.length + 1;
     for (let i = 0; i < games.length; i++) {
-      const row = this._gameToRow(games[i]);
-      sheet.appendRow(row);
-      const lastRow = sheet.getLastRow();
-      this._clearFormattingForNewGame(sheet, lastRow);
-      this._formatGameRow(sheet, lastRow, games[i].selectedNumbers);
+      const rowNum = firstNewRow + i;
+      this._clearFormattingForNewGame(sheet, rowNum);
+      this._formatGameRow(sheet, rowNum, games[i].selectedNumbers);
     }
   }
 
