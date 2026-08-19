@@ -68,11 +68,11 @@ class SyndicateGamesSheetService {
 
       for (const game of games) {
         if (game.drawnNumbers.length === 0) {
+          const selectedNumbers = this._extractSelectedNumbers(game.rowIndex);
           this.gamesRepository.updateGameResult(game.rowIndex, contest.drawnNumbers);
+          this._formatResultRow(game.rowIndex, selectedNumbers, contest.drawnNumbers);
           updatedLines++;
         }
-
-        this._formatResultRow(game.rowIndex, this._extractSelectedNumbers(game.rowIndex), contest.drawnNumbers);
       }
     }
 
