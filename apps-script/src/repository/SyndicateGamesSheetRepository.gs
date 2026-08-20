@@ -23,6 +23,10 @@ class SyndicateGamesSheetRepository {
     const lastRow = sheet.getLastRow();
     const startRow = lastRow + 1;
 
+    Logger.log(`[insertGames] Adding ${games.length} games starting at row ${startRow}`);
+    Logger.log(`[insertGames] First row: ${rows[0].length} elements, last 2: [${rows[0][66]}, ${rows[0][67]}]`);
+    Logger.log(`[insertGames] Contest: ${games[0].contestNumber}, Date: ${games[0].date}`);
+
     sheet.getRange(startRow, 1, games.length, 68).setValues(rows);
 
     for (let i = 0; i < games.length; i++) {
