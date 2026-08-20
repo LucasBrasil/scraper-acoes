@@ -104,6 +104,10 @@ class SyndicateGamesSheetRepository {
         cell.setBackground(MS_CONFIG.SELECTED_COLOR);
         cell.setFontWeight('normal');
         cell.setFontStyle('normal');
+      } else if (!isSelected && isDrawn) {
+        cell.setBackground(MS_CONFIG.HIT_COLOR);
+        cell.setFontWeight('normal');
+        cell.setFontStyle('normal');
       } else {
         cell.setBackground('#FFFFFF');
         cell.setFontWeight('normal');
