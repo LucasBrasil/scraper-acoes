@@ -99,12 +99,21 @@ class SyndicateGamesSheetService {
     const values = range.getValues()[0];
     const selectedNumbers = [];
 
+    Logger.log(`[_extractSelectedNumbers] Row ${rowIndex}:`);
+    Logger.log(`  Expected color: ${MS_CONFIG.SELECTED_COLOR}`);
+    Logger.log(`  Sample backgrounds: ${backgroundColors.slice(0, 10).join(', ')}`);
+
     for (let col = 0; col < 60; col++) {
-      if (backgroundColors[col] === MS_CONFIG.SELECTED_COLOR) {
-        selectedNumbers.push(Number(values[col]));
+      const color = backgroundColors[col];
+      const value = values[col];
+
+      if (color === MS_CONFIG.SELECTED_COLOR) {
+        selectedNumbers.push(Number(value));
+        Logger.log(`  Found selected number: ${value} (color: ${color})`);
       }
     }
 
+    Logger.log(`  Total selected found: ${selectedNumbers.length}`);
     return selectedNumbers.sort((a, b) => a - b);
   }
 }
