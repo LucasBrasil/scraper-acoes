@@ -196,7 +196,12 @@ function _executeSyndicateLotteryGeneration() {
   const historyRepository = new HistoryRepository();
   const httpClient = new HttpClient();
   const contestSource = new CaixaMegaSenaContestSource(httpClient);
-  const statisticsService = new StatisticsService(historyRepository, new StatisticsEngine(), new StatisticsRepository());
+  const statisticsRepository = new StatisticsRepository();
+  const statisticsService = new StatisticsService(historyRepository, new StatisticsEngine(), statisticsRepository);
+
+  statisticsService.updateStatistics();
+  Logger.log('Estatísticas atualizadas para geração do bolão.');
+
   const syndicateConfig = new SyndicateConfig(7, 6.00, new MaxDezenasDistributionStrategy());
 
   const service = new SyndicateLotteryService(
