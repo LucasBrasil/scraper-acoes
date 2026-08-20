@@ -94,15 +94,14 @@ class SyndicateGamesSheetService {
 
   _extractSelectedNumbers(rowIndex) {
     const sheet = this.gamesRepository._getSheet();
+    const range = sheet.getRange(rowIndex, 1, 1, 60);
+    const backgroundColors = range.getBackgrounds()[0];
+    const values = range.getValues()[0];
     const selectedNumbers = [];
 
-    for (let col = 1; col <= 60; col++) {
-      const cell = sheet.getRange(rowIndex, col);
-      const number = Number(cell.getValue());
-      const background = cell.getBackground ? cell.getBackground() : '#FFFFFF';
-
-      if (background === MS_CONFIG.SELECTED_COLOR) {
-        selectedNumbers.push(number);
+    for (let col = 0; col < 60; col++) {
+      if (backgroundColors[col] === MS_CONFIG.SELECTED_COLOR) {
+        selectedNumbers.push(Number(values[col]));
       }
     }
 
