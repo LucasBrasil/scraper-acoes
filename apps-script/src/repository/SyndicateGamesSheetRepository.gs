@@ -179,10 +179,25 @@ class SyndicateGamesSheetRepository {
   }
 
   _clearFormattingForNewGame(sheet, rowNumber) {
+    if (rowNumber === 1) {
+      const range = sheet.getRange(rowNumber, 1, 1, 68);
+      range.setBackground('#FFFFFF');
+      range.setFontColor('#000000');
+      range.setFontWeight('normal');
+      range.setFontStyle('normal');
+      return;
+    }
+
+    const prevRange = sheet.getRange(rowNumber - 1, 1, 1, 68);
+    const prevFontColors = prevRange.getFontColors()[0];
+    const prevFontWeights = prevRange.getFontWeights()[0];
+    const prevFontStyles = prevRange.getFontStyles()[0];
+
     const range = sheet.getRange(rowNumber, 1, 1, 68);
     range.setBackground('#FFFFFF');
-    range.setFontWeight('normal');
-    range.setFontStyle('normal');
+    range.setFontColors([prevFontColors]);
+    range.setFontWeights([prevFontWeights]);
+    range.setFontStyles([prevFontStyles]);
   }
 
   _getSheet() {
