@@ -100,15 +100,23 @@ class SyndicateGamesSheetService {
     const selectedNumbers = [];
     const expectedColor = MS_CONFIG.SELECTED_COLOR.toLowerCase();
 
+    Logger.log(`[_extractSelectedNumbers] Row ${rowIndex}: expected color=${expectedColor}`);
+
     for (let col = 0; col < 60; col++) {
       const color = backgroundColors[col].toLowerCase();
       const value = values[col];
+      const number = Number(value);
+
+      if (number === 33 || number === 52) {
+        Logger.log(`  Col ${col + 1} (value=${number}): color=${backgroundColors[col]} (lowercased=${color}) - ${color === expectedColor ? 'MATCH' : 'NO MATCH'}`);
+      }
 
       if (color === expectedColor) {
-        selectedNumbers.push(Number(value));
+        selectedNumbers.push(number);
       }
     }
 
+    Logger.log(`[_extractSelectedNumbers] Result: ${JSON.stringify(selectedNumbers)}`);
     return selectedNumbers.sort((a, b) => a - b);
   }
 }
