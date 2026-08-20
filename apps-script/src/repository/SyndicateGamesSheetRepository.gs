@@ -37,6 +37,9 @@ class SyndicateGamesSheetRepository {
       sheet.getRange(rowNum, 67, 1, 1).setValue(row[66]);
       sheet.getRange(rowNum, 68, 1, 1).setValue(row[67]);
 
+      sheet.getRange(rowNum, 67, 1, 2).setBackground('#000000');
+      sheet.getRange(rowNum, 67, 1, 2).setFontColor('#FFFFFF');
+
       this._formatGameRow(sheet, rowNum, games[i].selectedNumbers);
     }
   }
