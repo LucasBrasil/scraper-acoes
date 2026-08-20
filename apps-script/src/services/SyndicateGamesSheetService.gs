@@ -98,22 +98,17 @@ class SyndicateGamesSheetService {
     const backgroundColors = range.getBackgrounds()[0];
     const values = range.getValues()[0];
     const selectedNumbers = [];
-
-    Logger.log(`[_extractSelectedNumbers] Row ${rowIndex}:`);
-    Logger.log(`  Expected color: ${MS_CONFIG.SELECTED_COLOR}`);
-    Logger.log(`  Sample backgrounds: ${backgroundColors.slice(0, 10).join(', ')}`);
+    const expectedColor = MS_CONFIG.SELECTED_COLOR.toLowerCase();
 
     for (let col = 0; col < 60; col++) {
-      const color = backgroundColors[col];
+      const color = backgroundColors[col].toLowerCase();
       const value = values[col];
 
-      if (color === MS_CONFIG.SELECTED_COLOR) {
+      if (color === expectedColor) {
         selectedNumbers.push(Number(value));
-        Logger.log(`  Found selected number: ${value} (color: ${color})`);
       }
     }
 
-    Logger.log(`  Total selected found: ${selectedNumbers.length}`);
     return selectedNumbers.sort((a, b) => a - b);
   }
 }
