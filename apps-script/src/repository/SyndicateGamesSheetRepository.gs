@@ -28,16 +28,15 @@ class SyndicateGamesSheetRepository {
     Logger.log(`[insertGames] Contest: ${games[0].contestNumber}, Date: ${games[0].date}`);
 
     for (let i = 0; i < games.length; i++) {
-      const row = rows[i];
-      sheet.getRange(startRow + i, 1, 1, 60).setValues([row.slice(0, 60)]);
-      sheet.getRange(startRow + i, 61, 1, 6).setValues([row.slice(60, 66)]);
-      sheet.getRange(startRow + i, 67, 1, 1).setValue(row[66]);
-      sheet.getRange(startRow + i, 68, 1, 1).setValue(row[67]);
-    }
-
-    for (let i = 0; i < games.length; i++) {
       const rowNum = startRow + i;
       this._clearFormattingForNewGame(sheet, rowNum);
+
+      const row = rows[i];
+      sheet.getRange(rowNum, 1, 1, 60).setValues([row.slice(0, 60)]);
+      sheet.getRange(rowNum, 61, 1, 6).setValues([row.slice(60, 66)]);
+      sheet.getRange(rowNum, 67, 1, 1).setValue(row[66]);
+      sheet.getRange(rowNum, 68, 1, 1).setValue(row[67]);
+
       this._formatGameRow(sheet, rowNum, games[i].selectedNumbers);
     }
   }
@@ -179,25 +178,18 @@ class SyndicateGamesSheetRepository {
   }
 
   _clearFormattingForNewGame(sheet, rowNumber) {
-    if (rowNumber === 1) {
-      const range = sheet.getRange(rowNumber, 1, 1, 68);
-      range.setBackground('#FFFFFF');
-      range.setFontColor('#000000');
-      range.setFontWeight('normal');
-      range.setFontStyle('normal');
-      return;
-    }
-
-    const prevRange = sheet.getRange(rowNumber - 1, 1, 1, 68);
-    const prevFontColors = prevRange.getFontColors()[0];
-    const prevFontWeights = prevRange.getFontWeights()[0];
-    const prevFontStyles = prevRange.getFontStyles()[0];
-
     const range = sheet.getRange(rowNumber, 1, 1, 68);
     range.setBackground('#FFFFFF');
-    range.setFontColors([prevFontColors]);
-    range.setFontWeights([prevFontWeights]);
-    range.setFontStyles([prevFontStyles]);
+    range.setFontWeight('normal');
+    range.setFontStyle('normal');
+
+    if (rowNumber > 1) {
+      const prevRange = sheet.getRange(rowNumber - 1, 1, 1, 68);
+      const prevFontColors = prevRange.getFontColors()[0];
+      range.setFontColors([prevFontColors]);
+    } else {
+      range.setFontColor('#000000');
+    }
   }
 
   _getSheet() {
