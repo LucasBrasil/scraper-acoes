@@ -27,7 +27,13 @@ class SyndicateGamesSheetRepository {
     Logger.log(`[insertGames] First row: ${rows[0].length} elements, last 2: [${rows[0][66]}, ${rows[0][67]}]`);
     Logger.log(`[insertGames] Contest: ${games[0].contestNumber}, Date: ${games[0].date}`);
 
-    sheet.getRange(startRow, 1, games.length, 68).setValues(rows);
+    for (let i = 0; i < games.length; i++) {
+      const row = rows[i];
+      sheet.getRange(startRow + i, 1, 1, 60).setValues([row.slice(0, 60)]);
+      sheet.getRange(startRow + i, 61, 1, 6).setValues([row.slice(60, 66)]);
+      sheet.getRange(startRow + i, 67, 1, 1).setValue(row[66]);
+      sheet.getRange(startRow + i, 68, 1, 1).setValue(row[67]);
+    }
 
     for (let i = 0; i < games.length; i++) {
       const rowNum = startRow + i;
