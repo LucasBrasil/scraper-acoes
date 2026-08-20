@@ -90,6 +90,8 @@ class SyndicateGamesSheetRepository {
     const selectedSet = new Set(selectedNumbers);
     const drawnSet = new Set(drawnNumbers);
 
+    Logger.log(`[formatGameResultRow] Row ${rowNumber}: selected=${JSON.stringify(selectedNumbers)}, drawn=${JSON.stringify(drawnNumbers)}`);
+
     for (let col = 1; col <= 60; col++) {
       const cell = sheet.getRange(rowNumber, col);
       const number = Number(cell.getValue());
@@ -97,6 +99,7 @@ class SyndicateGamesSheetRepository {
       const isDrawn = drawnSet.has(number);
 
       if (isSelected && isDrawn) {
+        Logger.log(`  Cell ${col} (${number}): HIT! Selected+Drawn -> gray+bold+italic`);
         cell.setBackground(MS_CONFIG.HIT_COLOR);
         cell.setFontWeight('bold');
         cell.setFontStyle('italic');
@@ -105,6 +108,7 @@ class SyndicateGamesSheetRepository {
         cell.setFontWeight('normal');
         cell.setFontStyle('normal');
       } else if (!isSelected && isDrawn) {
+        Logger.log(`  Cell ${col} (${number}): Draw only -> gray`);
         cell.setBackground(MS_CONFIG.HIT_COLOR);
         cell.setFontWeight('normal');
         cell.setFontStyle('normal');
