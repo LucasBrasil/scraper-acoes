@@ -79,7 +79,7 @@ class SyndicateGamesSheetService {
 
       if (drawnNumbers.length === 0) {
         this.gamesRepository.updateGameResult(rowIndex, contest.drawnNumbers);
-        const selectedNumbers = this.gamesRepository._extractSelectedNumbers(rowIndex);
+        const selectedNumbers = this._extractSelectedNumbers(rowIndex);
         this._formatResultRow(rowIndex, selectedNumbers, contest.drawnNumbers);
         updatedLines++;
       }
