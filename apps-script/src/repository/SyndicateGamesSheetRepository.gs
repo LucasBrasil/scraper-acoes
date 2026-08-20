@@ -114,8 +114,10 @@ class SyndicateGamesSheetRepository {
 
   _gameToRow(game) {
     const row = [];
+    const selectedSet = new Set(game.selectedNumbers);
+
     for (let i = 1; i <= 60; i++) {
-      row.push(i);
+      row.push(selectedSet.has(i) ? i : '');
     }
     for (let i = 0; i < 6; i++) {
       row.push('');
