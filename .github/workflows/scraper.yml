@@ -2,7 +2,7 @@ name: Scraper Acoes
 
 on:
   schedule:
-    - cron: '0 14 * * 1-5'  # Segunda a sexta, 14:00 UTC (11:00 BRT)
+    - cron: '0 11 * * 1-5'  # Segunda a sexta, 14:00 UTC (11:00 BRT)
   workflow_dispatch:
 
 jobs:
