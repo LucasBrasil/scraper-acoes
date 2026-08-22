@@ -174,6 +174,8 @@ function generateSyndicateLottery() {
   }
 
   try {
+    _syncHistoryBeforeGeneration();
+
     const result = _executeSyndicateLotteryGeneration();
     const message = _formatSyndicateLotteryMessage(result);
     SpreadsheetApp.getUi().alert(message);
@@ -189,6 +191,22 @@ function generateSyndicateLottery() {
   } finally {
     lock.releaseLock();
   }
+}
+
+/** Sincroniza histórico antes de gerar bolão para atualizar resultados. */
+function _syncHistoryBeforeGeneration() {
+  const historyRepository = new HistoryRepository();
+  const httpClient = new HttpClient();
+  const contestSource = new CaixaMegaSenaContestSource(httpClient);
+
+  const syncService = new HistorySyncService(
+    contestSource,
+    historyRepository,
+    historyRepository.getLatestContestNumber()
+  );
+
+  syncService.sync();
+  Logger.log('Histórico sincronizado antes de gerar bolão.');
 }
 
 /** Executa a geração do bolão usando as dependências configuradas. */
