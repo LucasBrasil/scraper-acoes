@@ -11,7 +11,6 @@ WORKSHEET_NAME = "Dados"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 def conectar_google_sheets(service_account_json):
-    """Conecta com Google Sheets usando credenciais de service account"""
     try:
         credentials = Credentials.from_service_account_info(
             json.loads(service_account_json),
@@ -26,10 +25,8 @@ def conectar_google_sheets(service_account_json):
         return None
 
 def buscar_dados_fundamentus(ticker, tentativa=1):
-    """Busca dados de uma acao no Fundamentus com retry"""
     try:
         url = f"https://fundamentus.com.br/resultado.php?papel={ticker}"
-
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Accept-Language": "pt-BR,pt;q=0.9",
@@ -42,12 +39,11 @@ def buscar_dados_fundamentus(ticker, tentativa=1):
         response.encoding = 'utf-8'
 
         if response.status_code != 200:
-            print(f"Erro HTTP {response.status_code} para {ticker}")
             return None
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        dados = {
+        return {
             'preco': extrair_valor(soup, 'Cotacao'),
             'roe': extrair_valor(soup, 'ROE'),
             'margem_liquida': extrair_valor(soup, 'Marg. Liquida'),
@@ -56,25 +52,17 @@ def buscar_dados_fundamentus(ticker, tentativa=1):
             'pvp': extrair_valor(soup, 'P/VP')
         }
 
-        return dados
-
     except requests.exceptions.Timeout:
         if tentativa < 3:
-            print(f"Timeout para {ticker}. Tentando novamente (tentativa {tentativa + 1})...")
             time.sleep(5)
             return buscar_dados_fundamentus(ticker, tentativa + 1)
-        else:
-            print(f"Falha ao buscar {ticker} após 3 tentativas")
-            return None
+        return None
     except Exception as e:
-        print(f"Erro ao buscar {ticker}: {e}")
         return None
 
 def extrair_valor(soup, label):
-    """Extrai valor da tabela do Fundamentus"""
     try:
         linhas = soup.find_all('td')
-
         for i, td in enumerate(linhas):
             if label.lower() in td.get_text().lower():
                 if i + 1 < len(linhas):
@@ -86,57 +74,50 @@ def extrair_valor(soup, label):
                     except:
                         return 0.0
         return 0.0
-
-    except Exception as e:
+    except:
         return 0.0
 
-def atualizar_planilha_batch_otimizado(worksheet, tickers):
-    """Atualiza a planilha com batch updates em lotes para evitar quota exceeded"""
+def atualizar_planilha_super_lento(worksheet, tickers):
+    """Atualiza com delay gigante entre requisicoes para evitar quota"""
     try:
         linhas = worksheet.get_all_values()
-        total_processadas = 0
-        lote_size = 25  # Processa 25 tickers por vez
+        total = 0
 
-        # Coleta todos os dados primeiro
-        todos_dados = {}
-        dados_por_linha = {}
+        print("\nColetando dados...")
+        dados_para_atualizar = []
 
-        print(f"\nFase 1: Buscando dados de {len(tickers)} tickers...")
         for idx, linha in enumerate(linhas[1:], start=2):
             if not linha or not linha[0]:
                 continue
 
             ticker = linha[0].strip().upper()
-
             if not eh_ticker_valido(ticker):
                 continue
 
-            print(f"Buscando {ticker}...", end=" ")
-
+            print(f"[{total+1}] Buscando {ticker}...", end=" ")
             dados = buscar_dados_fundamentus(ticker)
 
             if dados:
-                todos_dados[ticker] = dados
-                dados_por_linha[idx] = dados
+                dados_para_atualizar.append((idx, ticker, dados))
                 print("✓")
-                total_processadas += 1
+                total += 1
             else:
                 print("✗")
 
-            time.sleep(2)  # Delay entre requisicoes
+            time.sleep(2)
 
-        # Agora atualiza em lotes
-        print(f"\nFase 2: Atualizando {total_processadas} linhas na planilha em lotes...")
-        lotes = list(dados_por_linha.items())
+        print(f"\n{total} tickers coletados. Iniciando atualizacao...")
+        print("AVISO: Processamento LENTO para evitar erro 429\n")
 
-        for i in range(0, len(lotes), lote_size):
-            lote = lotes[i:i + lote_size]
-            updates = []
+        # Atualiza um por um com delay gigante
+        for i, (idx, ticker, dados) in enumerate(dados_para_atualizar, 1):
+            try:
+                print(f"[{i}/{total}] Atualizando {ticker}...", end=" ")
 
-            for idx, dados in lote:
-                updates.append({
-                    'range': f'{WORKSHEET_NAME}!D{idx}:I{idx}',
-                    'values': [[
+                # Atualiza 6 celulas de uma vez (D-I)
+                worksheet.update(
+                    f'{WORKSHEET_NAME}!D{idx}:I{idx}',
+                    [[
                         round(dados['preco'], 2) if dados['preco'] else 0,
                         f"{round(dados['roe'], 2)}%" if dados['roe'] else "0%",
                         f"{round(dados['margem_liquida'], 2)}%" if dados['margem_liquida'] else "0%",
@@ -144,47 +125,25 @@ def atualizar_planilha_batch_otimizado(worksheet, tickers):
                         f"{round(dados['dividendos'], 2)}%" if dados['dividendos'] else "0%",
                         round(dados['pvp'], 2) if dados['pvp'] else 0
                     ]]
-                })
+                )
+                print("✓")
+            except Exception as e:
+                print(f"✗ {str(e)[:40]}")
 
-            if updates:
-                lote_num = (i // lote_size) + 1
-                total_lotes = (len(lotes) + lote_size - 1) // lote_size
-                print(f"  Lote {lote_num}/{total_lotes} ({len(updates)} itens)...", end=" ")
+            # GRANDE DELAY entre requisicoes
+            if i < total:
+                time.sleep(8)  # 8 segundos entre cada atualização
 
-                try:
-                    worksheet.spreadsheet.batch_update({
-                        'data': updates,
-                        'valueInputOption': 'RAW'
-                    })
-                    print("✓")
-                except Exception as e:
-                    print(f"✗ {str(e)[:50]}")
-                    # Fallback: tenta atualizar um por um
-                    print(f"    Tentando atualizar um por um...")
-                    for update in updates:
-                        try:
-                            worksheet.update(update['range'], update['values'])
-                            time.sleep(1)
-                        except Exception as e2:
-                            print(f"    Erro: {str(e2)[:50]}")
-
-                # Aguarda entre lotes para nao exceder quota
-                if i + lote_size < len(lotes):
-                    print(f"    Aguardando 15 segundos antes do proximo lote...")
-                    time.sleep(15)
-
-        print(f"\n✓ {total_processadas} linhas processadas em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        print(f"\n✓ Concluído! {total} tickers atualizados")
 
     except Exception as e:
-        print(f"Erro ao atualizar planilha: {e}")
+        print(f"Erro: {e}")
 
 def eh_ticker_valido(ticker):
-    """Valida se eh um ticker valido"""
     import re
     return bool(re.match(r'^[A-Z]{4,5}[0-9]{1,2}$', ticker))
 
 def main():
-    """Funcao principal"""
     import os
     service_account_json = os.environ.get('GOOGLE_CREDENTIALS')
 
@@ -193,21 +152,19 @@ def main():
         return
 
     worksheet = conectar_google_sheets(service_account_json)
-
     if not worksheet:
-        print("Nao foi possivel conectar com Google Sheets")
+        print("Erro: Nao foi possivel conectar com Google Sheets")
         return
 
     linhas = worksheet.get_all_values()
     tickers = [linha[0].strip().upper() for linha in linhas[1:] if linha and linha[0]]
 
     if not tickers:
-        print("Nenhum ticker encontrado na planilha")
+        print("Nenhum ticker encontrado")
         return
 
-    print(f"Atualizando {len(tickers)} tickers...")
-
-    atualizar_planilha_batch_otimizado(worksheet, tickers)
+    print(f"Processando {len(tickers)} tickers...")
+    atualizar_planilha_super_lento(worksheet, tickers)
 
 if __name__ == "__main__":
     main()
