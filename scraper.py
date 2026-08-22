@@ -92,12 +92,14 @@ def extrair_valor(soup, label):
         print(f"Erro ao extrair {label}: {e}")
         return 0.0
 
-def atualizar_planilha(worksheet, tickers):
-    """Atualiza a planilha com dados dos tickers"""
+def atualizar_planilha_batch(worksheet, tickers):
+    """Atualiza a planilha com batch updates para evitar quota exceeded"""
     try:
         linhas = worksheet.get_all_values()
+        updates = []
         processadas = 0
 
+        # Coleta todos os dados
         for idx, linha in enumerate(linhas[1:], start=2):
             if not linha or not linha[0]:
                 continue
@@ -112,22 +114,49 @@ def atualizar_planilha(worksheet, tickers):
             dados = buscar_dados_fundamentus(ticker)
 
             if dados:
-                worksheet.update_cell(idx, 4, round(dados['preco'], 2) if dados['preco'] else 0)
-                worksheet.update_cell(idx, 5, f"{round(dados['roe'], 2)}%" if dados['roe'] else "0%")
-                worksheet.update_cell(idx, 6, f"{round(dados['margem_liquida'], 2)}%" if dados['margem_liquida'] else "0%")
-                worksheet.update_cell(idx, 7, f"{round(dados['resultado_12m'], 2)}%" if dados['resultado_12m'] else "0%")
-                worksheet.update_cell(idx, 8, f"{round(dados['dividendos'], 2)}%" if dados['dividendos'] else "0%")
-                worksheet.update_cell(idx, 9, round(dados['pvp'], 2) if dados['pvp'] else 0)
+                # Adiciona as atualizacoes em um batch
+                # Colunas: D (4), E (5), F (6), G (7), H (8), I (9)
+                updates.append({
+                    'range': f'{WORKSHEET_NAME}!D{idx}:I{idx}',
+                    'values': [[
+                        round(dados['preco'], 2) if dados['preco'] else 0,
+                        f"{round(dados['roe'], 2)}%" if dados['roe'] else "0%",
+                        f"{round(dados['margem_liquida'], 2)}%" if dados['margem_liquida'] else "0%",
+                        f"{round(dados['resultado_12m'], 2)}%" if dados['resultado_12m'] else "0%",
+                        f"{round(dados['dividendos'], 2)}%" if dados['dividendos'] else "0%",
+                        round(dados['pvp'], 2) if dados['pvp'] else 0
+                    ]]
+                })
 
-                print(f"✓ {ticker} atualizado")
+                print(f"✓ {ticker} preparado para atualizar")
                 processadas += 1
             else:
-                print(f"✗ Erro ao atualizar {ticker}")
+                print(f"✗ Erro ao buscar {ticker}")
 
-            # Aumentado delay para 3 segundos entre requisicoes
+            # Delay entre requisicoes HTTP
             time.sleep(3)
 
-        print(f"\n✓ {processadas} linhas atualizadas em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        # Faz o batch update uma unica vez
+        if updates:
+            print(f"\nAtualizando {len(updates)} linhas na planilha...")
+            try:
+                worksheet.spreadsheet.batch_update({
+                    'data': updates,
+                    'valueInputOption': 'RAW'
+                })
+                print(f"✓ Planilha atualizada com sucesso!")
+            except Exception as e:
+                print(f"Erro ao fazer batch update: {e}")
+                # Fallback: tenta atualizar uma por uma com delay maior
+                print("Tentando atualizar uma por uma...")
+                for update in updates:
+                    try:
+                        worksheet.update(update['range'], update['values'])
+                        time.sleep(2)
+                    except Exception as e2:
+                        print(f"Erro na atualização: {e2}")
+
+        print(f"\n✓ {processadas} linhas processadas em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
     except Exception as e:
         print(f"Erro ao atualizar planilha: {e}")
@@ -161,7 +190,7 @@ def main():
 
     print(f"Atualizando {len(tickers)} tickers...")
 
-    atualizar_planilha(worksheet, tickers)
+    atualizar_planilha_batch(worksheet, tickers)
 
 if __name__ == "__main__":
     main()
