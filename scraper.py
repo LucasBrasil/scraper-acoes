@@ -38,7 +38,6 @@ def buscar_dados_fundamentus(ticker, tentativa=1):
             "Referer": "https://fundamentus.com.br/"
         }
 
-        # Aumentado timeout para 30 segundos
         response = requests.get(url, headers=headers, timeout=30)
         response.encoding = 'utf-8'
 
@@ -62,7 +61,7 @@ def buscar_dados_fundamentus(ticker, tentativa=1):
     except requests.exceptions.Timeout:
         if tentativa < 3:
             print(f"Timeout para {ticker}. Tentando novamente (tentativa {tentativa + 1})...")
-            time.sleep(5)  # Espera 5 segundos antes de tentar novamente
+            time.sleep(5)
             return buscar_dados_fundamentus(ticker, tentativa + 1)
         else:
             print(f"Falha ao buscar {ticker} após 3 tentativas")
@@ -89,17 +88,20 @@ def extrair_valor(soup, label):
         return 0.0
 
     except Exception as e:
-        print(f"Erro ao extrair {label}: {e}")
         return 0.0
 
-def atualizar_planilha_batch(worksheet, tickers):
-    """Atualiza a planilha com batch updates para evitar quota exceeded"""
+def atualizar_planilha_batch_otimizado(worksheet, tickers):
+    """Atualiza a planilha com batch updates em lotes para evitar quota exceeded"""
     try:
         linhas = worksheet.get_all_values()
-        updates = []
-        processadas = 0
+        total_processadas = 0
+        lote_size = 25  # Processa 25 tickers por vez
 
-        # Coleta todos os dados
+        # Coleta todos os dados primeiro
+        todos_dados = {}
+        dados_por_linha = {}
+
+        print(f"\nFase 1: Buscando dados de {len(tickers)} tickers...")
         for idx, linha in enumerate(linhas[1:], start=2):
             if not linha or not linha[0]:
                 continue
@@ -109,13 +111,29 @@ def atualizar_planilha_batch(worksheet, tickers):
             if not eh_ticker_valido(ticker):
                 continue
 
-            print(f"Buscando dados de {ticker}...")
+            print(f"Buscando {ticker}...", end=" ")
 
             dados = buscar_dados_fundamentus(ticker)
 
             if dados:
-                # Adiciona as atualizacoes em um batch
-                # Colunas: D (4), E (5), F (6), G (7), H (8), I (9)
+                todos_dados[ticker] = dados
+                dados_por_linha[idx] = dados
+                print("✓")
+                total_processadas += 1
+            else:
+                print("✗")
+
+            time.sleep(2)  # Delay entre requisicoes
+
+        # Agora atualiza em lotes
+        print(f"\nFase 2: Atualizando {total_processadas} linhas na planilha em lotes...")
+        lotes = list(dados_por_linha.items())
+
+        for i in range(0, len(lotes), lote_size):
+            lote = lotes[i:i + lote_size]
+            updates = []
+
+            for idx, dados in lote:
                 updates.append({
                     'range': f'{WORKSHEET_NAME}!D{idx}:I{idx}',
                     'values': [[
@@ -128,35 +146,34 @@ def atualizar_planilha_batch(worksheet, tickers):
                     ]]
                 })
 
-                print(f"✓ {ticker} preparado para atualizar")
-                processadas += 1
-            else:
-                print(f"✗ Erro ao buscar {ticker}")
+            if updates:
+                lote_num = (i // lote_size) + 1
+                total_lotes = (len(lotes) + lote_size - 1) // lote_size
+                print(f"  Lote {lote_num}/{total_lotes} ({len(updates)} itens)...", end=" ")
 
-            # Delay entre requisicoes HTTP
-            time.sleep(3)
+                try:
+                    worksheet.spreadsheet.batch_update({
+                        'data': updates,
+                        'valueInputOption': 'RAW'
+                    })
+                    print("✓")
+                except Exception as e:
+                    print(f"✗ {str(e)[:50]}")
+                    # Fallback: tenta atualizar um por um
+                    print(f"    Tentando atualizar um por um...")
+                    for update in updates:
+                        try:
+                            worksheet.update(update['range'], update['values'])
+                            time.sleep(1)
+                        except Exception as e2:
+                            print(f"    Erro: {str(e2)[:50]}")
 
-        # Faz o batch update uma unica vez
-        if updates:
-            print(f"\nAtualizando {len(updates)} linhas na planilha...")
-            try:
-                worksheet.spreadsheet.batch_update({
-                    'data': updates,
-                    'valueInputOption': 'RAW'
-                })
-                print(f"✓ Planilha atualizada com sucesso!")
-            except Exception as e:
-                print(f"Erro ao fazer batch update: {e}")
-                # Fallback: tenta atualizar uma por uma com delay maior
-                print("Tentando atualizar uma por uma...")
-                for update in updates:
-                    try:
-                        worksheet.update(update['range'], update['values'])
-                        time.sleep(2)
-                    except Exception as e2:
-                        print(f"Erro na atualização: {e2}")
+                # Aguarda entre lotes para nao exceder quota
+                if i + lote_size < len(lotes):
+                    print(f"    Aguardando 15 segundos antes do proximo lote...")
+                    time.sleep(15)
 
-        print(f"\n✓ {processadas} linhas processadas em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
+        print(f"\n✓ {total_processadas} linhas processadas em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}")
 
     except Exception as e:
         print(f"Erro ao atualizar planilha: {e}")
@@ -190,7 +207,7 @@ def main():
 
     print(f"Atualizando {len(tickers)} tickers...")
 
-    atualizar_planilha_batch(worksheet, tickers)
+    atualizar_planilha_batch_otimizado(worksheet, tickers)
 
 if __name__ == "__main__":
     main()
