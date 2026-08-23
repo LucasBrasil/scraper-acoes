@@ -7,6 +7,7 @@ import time
 import json
 import os
 import sys
+import re
 
 WORKSHEET_NAME = "Dados"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -27,7 +28,7 @@ def conectar():
         return None
 
 def buscar(ticker, tentativa=1):
-    """Busca com retry automático"""
+    """Busca com retry e parsing melhorado"""
     try:
         url = f"https://fundamentus.com.br/resultado.php?papel={ticker}"
         h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
@@ -36,26 +37,25 @@ def buscar(ticker, tentativa=1):
         if r.status_code != 200:
             return None
 
-        soup = BeautifulSoup(r.text, 'html.parser')
-        tds = soup.find_all('td')
-
-        def achar(label):
-            for i, td in enumerate(tds):
-                if label.lower() in td.get_text().lower() and i+1 < len(tds):
-                    v = tds[i+1].get_text().strip().replace('%','').replace('.','').replace(',','.')
-                    try:
-                        return float(v)
-                    except:
-                        return 0.0
+        html = r.text
+        
+        # Melhor parsing com regex
+        def extrair_valor(pattern):
+            match = re.search(pattern, html, re.IGNORECASE)
+            if match:
+                try:
+                    return float(match.group(1).replace(',', '.'))
+                except:
+                    return 0.0
             return 0.0
 
         return {
-            'preco': achar('Cotacao'),
-            'roe': achar('ROE'),
-            'marg': achar('Marg'),
-            'res12': achar('Resultado'),
-            'div': achar('Yield'),
-            'pvp': achar('P/VP')
+            'preco': extrair_valor(r'Cota.*?([0-9]+[.,][0-9]+)'),
+            'roe': extrair_valor(r'ROE.*?([0-9]+[.,][0-9]+)'),
+            'marg': extrair_valor(r'Margem.*?L.*?([0-9]+[.,][0-9]+)'),
+            'res12': extrair_valor(r'Resultado.*?([0-9]+[.,][0-9]+)'),
+            'div': extrair_valor(r'Div.*?Yield.*?([0-9]+[.,][0-9]+)'),
+            'pvp': extrair_valor(r'P/VP.*?([0-9]+[.,][0-9]+)')
         }
 
     except requests.exceptions.Timeout:
@@ -99,7 +99,7 @@ def main(inicio=None, fim=None):
 
         print(f"[{contador:3d}] {ticker:6s}...", end=" ", flush=True)
         dados = buscar(ticker)
-        if dados:
+        if dados and (dados['preco'] or dados['roe'] or dados['marg']):
             tickers_dados.append((idx, ticker, dados))
             print("OK")
         else:
@@ -114,16 +114,15 @@ def main(inicio=None, fim=None):
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
-            # CORRIGIDO: valores primeiro, depois range_name
             ws.update(
                 range_name=f'D{idx}:I{idx}',
                 values=[[
-                    round(dados['preco'], 2) or 0,
+                    round(dados['preco'], 2) if dados['preco'] else 0,
                     f"{round(dados['roe'], 2)}%",
                     f"{round(dados['marg'], 2)}%",
                     f"{round(dados['res12'], 2)}%",
                     f"{round(dados['div'], 2)}%",
-                    round(dados['pvp'], 2) or 0
+                    round(dados['pvp'], 2) if dados['pvp'] else 0
                 ]]
             )
             print("OK")
