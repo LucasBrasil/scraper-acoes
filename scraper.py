@@ -5,7 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 import time
 import json
-from datetime import datetime
+import os
 
 SPREADSHEET_ID = "COLE_AQUI_O_ID_DA_PLANILHA"
 WORKSHEET_NAME = "Dados"
@@ -13,7 +13,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 def conectar():
     try:
-        sa_json = json.loads(__import__('os').environ.get('GOOGLE_CREDENTIALS'))
+        sa_json = json.loads(os.environ.get('GOOGLE_CREDENTIALS'))
         creds = Credentials.from_service_account_info(sa_json, scopes=SCOPES)
         client = gspread.authorize(creds)
         return client.open_by_key(SPREADSHEET_ID).worksheet(WORKSHEET_NAME)
@@ -21,11 +21,13 @@ def conectar():
         print(f"Erro conexao: {e}")
         return None
 
-def buscar(ticker):
+def buscar(ticker, tentativa=1):
+    """Busca com retry automático"""
     try:
         url = f"https://fundamentus.com.br/resultado.php?papel={ticker}"
-        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        r = requests.get(url, headers=h, timeout=30)
+        h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
+        r = requests.get(url, headers=h, timeout=45)
+
         if r.status_code != 200:
             return None
 
@@ -50,7 +52,17 @@ def buscar(ticker):
             'div': achar('Yield'),
             'pvp': achar('P/VP')
         }
-    except:
+
+    except requests.exceptions.Timeout:
+        if tentativa < 3:
+            print(f"TIMEOUT (tentativa {tentativa}/3), aguardando 10s...")
+            time.sleep(10)
+            return buscar(ticker, tentativa + 1)
+        return None
+    except Exception as e:
+        if tentativa < 3:
+            time.sleep(5)
+            return buscar(ticker, tentativa + 1)
         return None
 
 def main():
@@ -58,7 +70,10 @@ def main():
     if not ws:
         return
 
-    print("Coletando dados...")
+    print("=" * 60)
+    print("COLETANDO DADOS")
+    print("=" * 60)
+
     linhas = ws.get_all_values()
     tickers_dados = []
 
@@ -69,20 +84,23 @@ def main():
         if not (len(ticker) in [5, 6] and ticker[:-1].isalpha() and ticker[-1].isdigit()):
             continue
 
-        print(f"[{len(tickers_dados)+1}] {ticker}...", end=" ")
+        print(f"[{len(tickers_dados)+1}] {ticker:6s}...", end=" ", flush=True)
         dados = buscar(ticker)
         if dados:
             tickers_dados.append((idx, ticker, dados))
             print("OK")
         else:
-            print("FAIL")
-        time.sleep(2)
+            print("SKIP")
+        time.sleep(1)
 
-    print(f"\nAtualizando {len(tickers_dados)} tickers (LENTO)...")
+    print("\n" + "=" * 60)
+    print(f"ATUALIZANDO ({len(tickers_dados)} TICKERS)")
+    print("=" * 60)
 
+    ok_count = 0
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
-            print(f"[{i}/{len(tickers_dados)}] {ticker}...", end=" ")
+            print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
             ws.update(f'Dados!D{idx}:I{idx}', [[
                 round(dados['preco'], 2) or 0,
                 f"{round(dados['roe'], 2)}%",
@@ -92,13 +110,16 @@ def main():
                 round(dados['pvp'], 2) or 0
             ]])
             print("OK")
+            ok_count += 1
         except Exception as e:
-            print(f"ERRO: {str(e)[:30]}")
+            print(f"ERR: {str(e)[:25]}")
 
         if i < len(tickers_dados):
             time.sleep(10)
 
-    print(f"\nConcluido! {len(tickers_dados)} atualizados")
+    print("\n" + "=" * 60)
+    print(f"CONCLUIDO! {ok_count}/{len(tickers_dados)} atualizados")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()
