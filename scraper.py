@@ -6,6 +6,7 @@ from google.oauth2.service_account import Credentials
 import time
 import json
 import os
+import sys
 
 SPREADSHEET_ID = "COLE_AQUI_O_ID_DA_PLANILHA"
 WORKSHEET_NAME = "Dados"
@@ -55,7 +56,6 @@ def buscar(ticker, tentativa=1):
 
     except requests.exceptions.Timeout:
         if tentativa < 3:
-            print(f"TIMEOUT (tentativa {tentativa}/3), aguardando 10s...")
             time.sleep(10)
             return buscar(ticker, tentativa + 1)
         return None
@@ -65,18 +65,23 @@ def buscar(ticker, tentativa=1):
             return buscar(ticker, tentativa + 1)
         return None
 
-def main():
+def main(inicio=None, fim=None):
     ws = conectar()
     if not ws:
         return
 
-    print("=" * 60)
-    print("COLETANDO DADOS")
-    print("=" * 60)
-
     linhas = ws.get_all_values()
     tickers_dados = []
 
+    # Se não especificar, pega todos
+    inicio = inicio or 0
+    fim = fim or len(linhas)
+
+    print("=" * 60)
+    print(f"COLETANDO TICKERS {inicio}-{fim}")
+    print("=" * 60)
+
+    contador = 0
     for idx, linha in enumerate(linhas[1:], 2):
         if not linha or not linha[0]:
             continue
@@ -84,7 +89,13 @@ def main():
         if not (len(ticker) in [5, 6] and ticker[:-1].isalpha() and ticker[-1].isdigit()):
             continue
 
-        print(f"[{len(tickers_dados)+1}] {ticker:6s}...", end=" ", flush=True)
+        contador += 1
+
+        # Se está fora do range, pula
+        if contador < inicio or contador > fim:
+            continue
+
+        print(f"[{contador:3d}] {ticker:6s}...", end=" ", flush=True)
         dados = buscar(ticker)
         if dados:
             tickers_dados.append((idx, ticker, dados))
@@ -122,4 +133,17 @@ def main():
     print("=" * 60)
 
 if __name__ == "__main__":
-    main()
+    # Uso: python scraper_com_range.py <inicio> <fim>
+    # Exemplo: python scraper_com_range.py 1 65
+
+    inicio = None
+    fim = None
+
+    if len(sys.argv) >= 3:
+        try:
+            inicio = int(sys.argv[1])
+            fim = int(sys.argv[2])
+        except:
+            pass
+
+    main(inicio, fim)
