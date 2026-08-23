@@ -8,16 +8,20 @@ import json
 import os
 import sys
 
-SPREADSHEET_ID = "COLE_AQUI_O_ID_DA_PLANILHA"
 WORKSHEET_NAME = "Dados"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 def conectar():
     try:
+        spreadsheet_id = os.environ.get('SPREADSHEET_ID')
+        if not spreadsheet_id or spreadsheet_id == "COLE_AQUI_O_ID_DA_PLANILHA":
+            print("ERRO: SPREADSHEET_ID nao configurado!")
+            return None
+
         sa_json = json.loads(os.environ.get('GOOGLE_CREDENTIALS'))
         creds = Credentials.from_service_account_info(sa_json, scopes=SCOPES)
         client = gspread.authorize(creds)
-        return client.open_by_key(SPREADSHEET_ID).worksheet(WORKSHEET_NAME)
+        return client.open_by_key(spreadsheet_id).worksheet(WORKSHEET_NAME)
     except Exception as e:
         print(f"Erro conexao: {e}")
         return None
@@ -73,7 +77,6 @@ def main(inicio=None, fim=None):
     linhas = ws.get_all_values()
     tickers_dados = []
 
-    # Se não especificar, pega todos
     inicio = inicio or 0
     fim = fim or len(linhas)
 
@@ -91,7 +94,6 @@ def main(inicio=None, fim=None):
 
         contador += 1
 
-        # Se está fora do range, pula
         if contador < inicio or contador > fim:
             continue
 
@@ -133,9 +135,6 @@ def main(inicio=None, fim=None):
     print("=" * 60)
 
 if __name__ == "__main__":
-    # Uso: python scraper_com_range.py <inicio> <fim>
-    # Exemplo: python scraper_com_range.py 1 65
-
     inicio = None
     fim = None
 
