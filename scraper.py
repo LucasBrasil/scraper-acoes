@@ -114,14 +114,18 @@ def main(inicio=None, fim=None):
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
-            ws.update(f'Dados!D{idx}:I{idx}', [[
-                round(dados['preco'], 2) or 0,
-                f"{round(dados['roe'], 2)}%",
-                f"{round(dados['marg'], 2)}%",
-                f"{round(dados['res12'], 2)}%",
-                f"{round(dados['div'], 2)}%",
-                round(dados['pvp'], 2) or 0
-            ]])
+            # CORRIGIDO: valores primeiro, depois range_name
+            ws.update(
+                range_name=f'D{idx}:I{idx}',
+                values=[[
+                    round(dados['preco'], 2) or 0,
+                    f"{round(dados['roe'], 2)}%",
+                    f"{round(dados['marg'], 2)}%",
+                    f"{round(dados['res12'], 2)}%",
+                    f"{round(dados['div'], 2)}%",
+                    round(dados['pvp'], 2) or 0
+                ]]
+            )
             print("OK")
             ok_count += 1
         except Exception as e:
