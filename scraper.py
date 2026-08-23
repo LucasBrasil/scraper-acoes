@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import requests
 from bs4 import BeautifulSoup
 import gspread
@@ -10,161 +11,94 @@ SPREADSHEET_ID = "COLE_AQUI_O_ID_DA_PLANILHA"
 WORKSHEET_NAME = "Dados"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
-def conectar_google_sheets(service_account_json):
+def conectar():
     try:
-        credentials = Credentials.from_service_account_info(
-            json.loads(service_account_json),
-            scopes=SCOPES
-        )
-        client = gspread.authorize(credentials)
-        spreadsheet = client.open_by_key(SPREADSHEET_ID)
-        worksheet = spreadsheet.worksheet(WORKSHEET_NAME)
-        return worksheet
+        sa_json = json.loads(__import__('os').environ.get('GOOGLE_CREDENTIALS'))
+        creds = Credentials.from_service_account_info(sa_json, scopes=SCOPES)
+        client = gspread.authorize(creds)
+        return client.open_by_key(SPREADSHEET_ID).worksheet(WORKSHEET_NAME)
     except Exception as e:
-        print(f"Erro ao conectar com Google Sheets: {e}")
+        print(f"Erro conexao: {e}")
         return None
 
-def buscar_dados_fundamentus(ticker, tentativa=1):
+def buscar(ticker):
     try:
         url = f"https://fundamentus.com.br/resultado.php?papel={ticker}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept-Language": "pt-BR,pt;q=0.9",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Connection": "keep-alive",
-            "Referer": "https://fundamentus.com.br/"
-        }
-
-        response = requests.get(url, headers=headers, timeout=30)
-        response.encoding = 'utf-8'
-
-        if response.status_code != 200:
+        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        r = requests.get(url, headers=h, timeout=30)
+        if r.status_code != 200:
             return None
 
-        soup = BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(r.text, 'html.parser')
+        tds = soup.find_all('td')
 
-        return {
-            'preco': extrair_valor(soup, 'Cotacao'),
-            'roe': extrair_valor(soup, 'ROE'),
-            'margem_liquida': extrair_valor(soup, 'Marg. Liquida'),
-            'resultado_12m': extrair_valor(soup, 'Resultado'),
-            'dividendos': extrair_valor(soup, 'Div. Yield'),
-            'pvp': extrair_valor(soup, 'P/VP')
-        }
-
-    except requests.exceptions.Timeout:
-        if tentativa < 3:
-            time.sleep(5)
-            return buscar_dados_fundamentus(ticker, tentativa + 1)
-        return None
-    except Exception as e:
-        return None
-
-def extrair_valor(soup, label):
-    try:
-        linhas = soup.find_all('td')
-        for i, td in enumerate(linhas):
-            if label.lower() in td.get_text().lower():
-                if i + 1 < len(linhas):
-                    valor_text = linhas[i + 1].get_text().strip()
-                    valor_text = valor_text.replace('%', '').strip()
-                    valor_text = valor_text.replace('.', '').replace(',', '.')
+        def achar(label):
+            for i, td in enumerate(tds):
+                if label.lower() in td.get_text().lower() and i+1 < len(tds):
+                    v = tds[i+1].get_text().strip().replace('%','').replace('.','').replace(',','.')
                     try:
-                        return float(valor_text)
+                        return float(v)
                     except:
                         return 0.0
-        return 0.0
+            return 0.0
+
+        return {
+            'preco': achar('Cotacao'),
+            'roe': achar('ROE'),
+            'marg': achar('Marg'),
+            'res12': achar('Resultado'),
+            'div': achar('Yield'),
+            'pvp': achar('P/VP')
+        }
     except:
-        return 0.0
-
-def atualizar_planilha_super_lento(worksheet, tickers):
-    """Atualiza com delay gigante entre requisicoes para evitar quota"""
-    try:
-        linhas = worksheet.get_all_values()
-        total = 0
-
-        print("\nColetando dados...")
-        dados_para_atualizar = []
-
-        for idx, linha in enumerate(linhas[1:], start=2):
-            if not linha or not linha[0]:
-                continue
-
-            ticker = linha[0].strip().upper()
-            if not eh_ticker_valido(ticker):
-                continue
-
-            print(f"[{total+1}] Buscando {ticker}...", end=" ")
-            dados = buscar_dados_fundamentus(ticker)
-
-            if dados:
-                dados_para_atualizar.append((idx, ticker, dados))
-                print("✓")
-                total += 1
-            else:
-                print("✗")
-
-            time.sleep(2)
-
-        print(f"\n{total} tickers coletados. Iniciando atualizacao...")
-        print("AVISO: Processamento LENTO para evitar erro 429\n")
-
-        # Atualiza um por um com delay gigante
-        for i, (idx, ticker, dados) in enumerate(dados_para_atualizar, 1):
-            try:
-                print(f"[{i}/{total}] Atualizando {ticker}...", end=" ")
-
-                # Atualiza 6 celulas de uma vez (D-I)
-                worksheet.update(
-                    f'{WORKSHEET_NAME}!D{idx}:I{idx}',
-                    [[
-                        round(dados['preco'], 2) if dados['preco'] else 0,
-                        f"{round(dados['roe'], 2)}%" if dados['roe'] else "0%",
-                        f"{round(dados['margem_liquida'], 2)}%" if dados['margem_liquida'] else "0%",
-                        f"{round(dados['resultado_12m'], 2)}%" if dados['resultado_12m'] else "0%",
-                        f"{round(dados['dividendos'], 2)}%" if dados['dividendos'] else "0%",
-                        round(dados['pvp'], 2) if dados['pvp'] else 0
-                    ]]
-                )
-                print("✓")
-            except Exception as e:
-                print(f"✗ {str(e)[:40]}")
-
-            # GRANDE DELAY entre requisicoes
-            if i < total:
-                time.sleep(8)  # 8 segundos entre cada atualização
-
-        print(f"\n✓ Concluído! {total} tickers atualizados")
-
-    except Exception as e:
-        print(f"Erro: {e}")
-
-def eh_ticker_valido(ticker):
-    import re
-    return bool(re.match(r'^[A-Z]{4,5}[0-9]{1,2}$', ticker))
+        return None
 
 def main():
-    import os
-    service_account_json = os.environ.get('GOOGLE_CREDENTIALS')
-
-    if not service_account_json:
-        print("Erro: GOOGLE_CREDENTIALS nao definida")
+    ws = conectar()
+    if not ws:
         return
 
-    worksheet = conectar_google_sheets(service_account_json)
-    if not worksheet:
-        print("Erro: Nao foi possivel conectar com Google Sheets")
-        return
+    print("Coletando dados...")
+    linhas = ws.get_all_values()
+    tickers_dados = []
 
-    linhas = worksheet.get_all_values()
-    tickers = [linha[0].strip().upper() for linha in linhas[1:] if linha and linha[0]]
+    for idx, linha in enumerate(linhas[1:], 2):
+        if not linha or not linha[0]:
+            continue
+        ticker = linha[0].strip().upper()
+        if not (len(ticker) in [5, 6] and ticker[:-1].isalpha() and ticker[-1].isdigit()):
+            continue
 
-    if not tickers:
-        print("Nenhum ticker encontrado")
-        return
+        print(f"[{len(tickers_dados)+1}] {ticker}...", end=" ")
+        dados = buscar(ticker)
+        if dados:
+            tickers_dados.append((idx, ticker, dados))
+            print("OK")
+        else:
+            print("FAIL")
+        time.sleep(2)
 
-    print(f"Processando {len(tickers)} tickers...")
-    atualizar_planilha_super_lento(worksheet, tickers)
+    print(f"\nAtualizando {len(tickers_dados)} tickers (LENTO)...")
+
+    for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
+        try:
+            print(f"[{i}/{len(tickers_dados)}] {ticker}...", end=" ")
+            ws.update(f'Dados!D{idx}:I{idx}', [[
+                round(dados['preco'], 2) or 0,
+                f"{round(dados['roe'], 2)}%",
+                f"{round(dados['marg'], 2)}%",
+                f"{round(dados['res12'], 2)}%",
+                f"{round(dados['div'], 2)}%",
+                round(dados['pvp'], 2) or 0
+            ]])
+            print("OK")
+        except Exception as e:
+            print(f"ERRO: {str(e)[:30]}")
+
+        if i < len(tickers_dados):
+            time.sleep(10)
+
+    print(f"\nConcluido! {len(tickers_dados)} atualizados")
 
 if __name__ == "__main__":
     main()
