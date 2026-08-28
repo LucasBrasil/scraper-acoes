@@ -45,12 +45,18 @@ class SyndicateGamesSheetService {
     const contests = this.historyRepository.getAll();
 
     if (!contests || contests.length === 0) {
+      Logger.log('[updateResults] No contests found in history');
       return { updatedLines: 0 };
     }
+
+    Logger.log(`[updateResults] Found ${contests.length} contests in history`);
 
     const contestsByNumber = new Map();
     contests.forEach((contest) => {
       contestsByNumber.set(contest.number, contest);
+      if (contest.drawnNumbers && contest.drawnNumbers.length > 0) {
+        Logger.log(`  Contest ${contest.number}: drawn=[${contest.drawnNumbers.join(',')}]`);
+      }
     });
 
     const sheet = this.gamesRepository._getSheet();
@@ -65,6 +71,8 @@ class SyndicateGamesSheetService {
     const startIndex = frozenRows > 0 ? 1 : 0;
     const contestColIndex = 66;
 
+    Logger.log(`[updateResults] Sheet has ${values.length} rows, scanning from index ${startIndex}`);
+
     for (let i = startIndex; i < values.length; i++) {
       const row = values[i];
       const contestNumber = row[contestColIndex];
@@ -77,7 +85,10 @@ class SyndicateGamesSheetService {
       const drawnNumbers = this.gamesRepository._extractDrawnNumbers(row);
       const rowIndex = i + 1;
 
+      Logger.log(`[updateResults] Row ${rowIndex}, Contest ${contestNumber}: current drawn=[${drawnNumbers.join(',')}], has result=${drawnNumbers.length > 0}`);
+
       if (drawnNumbers.length === 0) {
+        Logger.log(`  -> Updating with drawn numbers: [${contest.drawnNumbers.join(',')}]`);
         this.gamesRepository.updateGameResult(rowIndex, contest.drawnNumbers);
         const selectedNumbers = this._extractSelectedNumbers(rowIndex);
         this._formatResultRow(rowIndex, selectedNumbers, contest.drawnNumbers);
@@ -85,6 +96,7 @@ class SyndicateGamesSheetService {
       }
     }
 
+    Logger.log(`[updateResults] Total updated: ${updatedLines} lines`);
     return { updatedLines };
   }
 
