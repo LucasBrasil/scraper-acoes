@@ -113,8 +113,8 @@ def main(inicio=None, fim=None):
                 round(dados['preco'], 2) if dados['preco'] else 0,
                 f"{round(dados['roe'], 2)}%",
                 f"{round(dados['marg'], 2)}%",
-                f"{round(dados['osc_12m'], 2)}%",
                 f"{round(dados['res_12m'], 2)}%",
+                f"{round(dados['osc_12m'], 2)}%",
                 f"{round(dados['div'], 2)}%",
                 round(dados['pvp'], 2) if dados['pvp'] else 0
             ]])
