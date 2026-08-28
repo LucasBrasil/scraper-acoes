@@ -48,6 +48,7 @@ def buscar(ticker, tentativa=1):
         cotacao = extrair_numero(re.search(r'Cotação.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
         roe = extrair_numero(re.search(r'>ROE<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
         marg = extrair_numero(re.search(r'>Marg\. Líquida<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        osc_12m = extrair_numero(re.search(r'>12 meses<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
         div = extrair_numero(re.search(r'>Div\. Yield<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
         pvp = extrair_numero(re.search(r'>P/VP<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
 
@@ -60,7 +61,7 @@ def buscar(ticker, tentativa=1):
             if receita > 0:
                 resultado_12m = (lucro / receita) * 100
 
-        return {'preco': cotacao, 'roe': roe, 'marg': marg, 'res12': resultado_12m, 'div': div, 'pvp': pvp}
+        return {'preco': cotacao, 'roe': roe, 'marg': marg, 'osc_12m': osc_12m, 'res_12m': resultado_12m, 'div': div, 'pvp': pvp}
     except requests.exceptions.Timeout:
         if tentativa < 3:
             time.sleep(10)
@@ -108,7 +109,15 @@ def main(inicio=None, fim=None):
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
-            ws.update(range_name=f'D{idx}:I{idx}', values=[[round(dados['preco'], 2) if dados['preco'] else 0, f"{round(dados['roe'], 2)}%", f"{round(dados['marg'], 2)}%", f"{round(dados['res12'], 2)}%", f"{round(dados['div'], 2)}%", round(dados['pvp'], 2) if dados['pvp'] else 0]])
+            ws.update(range_name=f'D{idx}:J{idx}', values=[[
+                round(dados['preco'], 2) if dados['preco'] else 0,
+                f"{round(dados['roe'], 2)}%",
+                f"{round(dados['marg'], 2)}%",
+                f"{round(dados['osc_12m'], 2)}%",
+                f"{round(dados['res_12m'], 2)}%",
+                f"{round(dados['div'], 2)}%",
+                round(dados['pvp'], 2) if dados['pvp'] else 0
+            ]])
             print("OK")
             ok_count += 1
         except Exception as e:
