@@ -18,7 +18,6 @@ def conectar():
         if not spreadsheet_id or spreadsheet_id == "COLE_AQUI_O_ID_DA_PLANILHA":
             print("ERRO: SPREADSHEET_ID nao configurado!")
             return None
-
         sa_json = json.loads(os.environ.get('GOOGLE_CREDENTIALS'))
         creds = Credentials.from_service_account_info(sa_json, scopes=SCOPES)
         client = gspread.authorize(creds)
@@ -28,42 +27,46 @@ def conectar():
         return None
 
 def buscar(ticker, tentativa=1):
-    """Busca com retry e parsing melhorado"""
     try:
         url = f"https://fundamentus.com.br/resultado.php?papel={ticker}"
         h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
         r = requests.get(url, headers=h, timeout=45)
-
         if r.status_code != 200:
             return None
-
         html = r.text
         
-        # Melhor parsing com regex
-        def extrair_valor(pattern):
-            match = re.search(pattern, html, re.IGNORECASE)
-            if match:
-                try:
-                    return float(match.group(1).replace(',', '.'))
-                except:
-                    return 0.0
-            return 0.0
+        def extrair_numero(match_obj):
+            if not match_obj:
+                return 0.0
+            texto = match_obj.group(1) if match_obj.lastindex else match_obj.group(0)
+            texto = texto.replace('.', '').replace(',', '.')
+            try:
+                return float(texto)
+            except:
+                return 0.0
 
-        return {
-            'preco': extrair_valor(r'Cota.*?([0-9]+[.,][0-9]+)'),
-            'roe': extrair_valor(r'ROE.*?([0-9]+[.,][0-9]+)'),
-            'marg': extrair_valor(r'Margem.*?L.*?([0-9]+[.,][0-9]+)'),
-            'res12': extrair_valor(r'Resultado.*?([0-9]+[.,][0-9]+)'),
-            'div': extrair_valor(r'Div.*?Yield.*?([0-9]+[.,][0-9]+)'),
-            'pvp': extrair_valor(r'P/VP.*?([0-9]+[.,][0-9]+)')
-        }
+        cotacao = extrair_numero(re.search(r'Cotação.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        roe = extrair_numero(re.search(r'>ROE<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        marg = extrair_numero(re.search(r'>Marg\. Líquida<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        div = extrair_numero(re.search(r'>Div\. Yield<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        pvp = extrair_numero(re.search(r'>P/VP<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
 
+        resultado_12m = 0.0
+        receita_match = re.search(r'Últimos 12 meses.*?Receita Líquida.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
+        lucro_match = re.search(r'Últimos 12 meses.*?Lucro Líquido.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
+        if receita_match and lucro_match:
+            receita = extrair_numero(receita_match)
+            lucro = extrair_numero(lucro_match)
+            if receita > 0:
+                resultado_12m = (lucro / receita) * 100
+
+        return {'preco': cotacao, 'roe': roe, 'marg': marg, 'res12': resultado_12m, 'div': div, 'pvp': pvp}
     except requests.exceptions.Timeout:
         if tentativa < 3:
             time.sleep(10)
             return buscar(ticker, tentativa + 1)
         return None
-    except Exception as e:
+    except Exception:
         if tentativa < 3:
             time.sleep(5)
             return buscar(ticker, tentativa + 1)
@@ -73,17 +76,13 @@ def main(inicio=None, fim=None):
     ws = conectar()
     if not ws:
         return
-
     linhas = ws.get_all_values()
     tickers_dados = []
-
     inicio = inicio or 0
     fim = fim or len(linhas)
-
     print("=" * 60)
     print(f"COLETANDO TICKERS {inicio}-{fim}")
     print("=" * 60)
-
     contador = 0
     for idx, linha in enumerate(linhas[1:], 2):
         if not linha or not linha[0]:
@@ -91,12 +90,9 @@ def main(inicio=None, fim=None):
         ticker = linha[0].strip().upper()
         if not (len(ticker) in [5, 6] and ticker[:-1].isalpha() and ticker[-1].isdigit()):
             continue
-
         contador += 1
-
         if contador < inicio or contador > fim:
             continue
-
         print(f"[{contador:3d}] {ticker:6s}...", end=" ", flush=True)
         dados = buscar(ticker)
         if dados and (dados['preco'] or dados['roe'] or dados['marg']):
@@ -105,34 +101,20 @@ def main(inicio=None, fim=None):
         else:
             print("SKIP")
         time.sleep(1)
-
     print("\n" + "=" * 60)
     print(f"ATUALIZANDO ({len(tickers_dados)} TICKERS)")
     print("=" * 60)
-
     ok_count = 0
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
-            ws.update(
-                range_name=f'D{idx}:I{idx}',
-                values=[[
-                    round(dados['preco'], 2) if dados['preco'] else 0,
-                    f"{round(dados['roe'], 2)}%",
-                    f"{round(dados['marg'], 2)}%",
-                    f"{round(dados['res12'], 2)}%",
-                    f"{round(dados['div'], 2)}%",
-                    round(dados['pvp'], 2) if dados['pvp'] else 0
-                ]]
-            )
+            ws.update(range_name=f'D{idx}:I{idx}', values=[[round(dados['preco'], 2) if dados['preco'] else 0, f"{round(dados['roe'], 2)}%", f"{round(dados['marg'], 2)}%", f"{round(dados['res12'], 2)}%", f"{round(dados['div'], 2)}%", round(dados['pvp'], 2) if dados['pvp'] else 0]])
             print("OK")
             ok_count += 1
         except Exception as e:
             print(f"ERR: {str(e)[:25]}")
-
         if i < len(tickers_dados):
             time.sleep(10)
-
     print("\n" + "=" * 60)
     print(f"CONCLUIDO! {ok_count}/{len(tickers_dados)} atualizados")
     print("=" * 60)
@@ -140,12 +122,10 @@ def main(inicio=None, fim=None):
 if __name__ == "__main__":
     inicio = None
     fim = None
-
     if len(sys.argv) >= 3:
         try:
             inicio = int(sys.argv[1])
             fim = int(sys.argv[2])
         except:
             pass
-
     main(inicio, fim)
