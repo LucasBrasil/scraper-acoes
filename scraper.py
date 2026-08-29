@@ -28,7 +28,7 @@ def conectar():
 
 def buscar(ticker, tentativa=1):
     try:
-        url = f"https://fundamentus.com.br/resultado.php?papel={ticker}"
+        url = f"https://fundamentus.com.br/detalhes.php?papel={ticker}"
         h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
         r = requests.get(url, headers=h, timeout=45)
         if r.status_code != 200:
@@ -39,31 +39,28 @@ def buscar(ticker, tentativa=1):
             if not match_obj:
                 return 0.0
             texto = match_obj.group(1) if match_obj.lastindex else match_obj.group(0)
+            texto = texto.replace('%', '').strip()
             texto = texto.replace('.', '').replace(',', '.')
             try:
                 return float(texto)
             except:
                 return 0.0
 
-        cotacao = extrair_numero(re.search(r'Cotação.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        roe = extrair_numero(re.search(r'>ROE<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        marg = extrair_numero(re.search(r'>Marg\. Líquida<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        
+        # Extrai números procurando especificamente por <span class="txt"> após o label
+        cotacao = extrair_numero(re.search(r'>Cotação<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        roe = extrair_numero(re.search(r'>ROE<.*?<span class="txt">\s*([0-9.,]+%)', html, re.IGNORECASE | re.DOTALL))
+        marg = extrair_numero(re.search(r'>Marg\. Líquida<.*?<span class="txt">\s*([0-9.,]+%)', html, re.IGNORECASE | re.DOTALL))
+        div = extrair_numero(re.search(r'>Div\. Yield<.*?<span class="txt">\s*([0-9.,]+%)', html, re.IGNORECASE | re.DOTALL))
+        pvp = extrair_numero(re.search(r'>P/VP<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+
         # Osc 12 meses - busca especificamente na seção de oscilação
         osc_match = re.search(r'>12 meses<.*?<span class="oscil">[^<]*<font[^>]*>([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL)
         osc_12m = extrair_numero(osc_match) if osc_match else 0.0
-        
-        # Div Yield - busca especificamente
-        div_match = re.search(r'>Div\. Yield<.*?<span[^>]*>([0-9.,]+)%', html, re.IGNORECASE | re.DOTALL)
-        div = extrair_numero(div_match) if div_match else 0.0
-        
-        # P/VP - busca especificamente
-        pvp_match = re.search(r'>P/VP<.*?<span[^>]*>([0-9.,]+)<', html, re.IGNORECASE | re.DOTALL)
-        pvp = extrair_numero(pvp_match) if pvp_match else 0.0
 
         resultado_12m = 0.0
-        receita_match = re.search(r'Últimos 12 meses.*?Receita Líquida.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
-        lucro_match = re.search(r'Últimos 12 meses.*?Lucro Líquido.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
+        # Procura pela tabela de dados demonstrativos dos Últimos 12 meses
+        receita_match = re.search(r'>Receita Líquida<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
+        lucro_match = re.search(r'>Lucro Líquido<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
         if receita_match and lucro_match:
             receita = extrair_numero(receita_match)
             lucro = extrair_numero(lucro_match)
