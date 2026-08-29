@@ -48,9 +48,18 @@ def buscar(ticker, tentativa=1):
         cotacao = extrair_numero(re.search(r'Cotação.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
         roe = extrair_numero(re.search(r'>ROE<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
         marg = extrair_numero(re.search(r'>Marg\. Líquida<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        osc_12m = extrair_numero(re.search(r'>12 meses<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        div = extrair_numero(re.search(r'>Div\. Yield<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        pvp = extrair_numero(re.search(r'>P/VP<.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        
+        # Osc 12 meses - busca especificamente na seção de oscilação
+        osc_match = re.search(r'>12 meses<.*?<span class="oscil">[^<]*<font[^>]*>([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL)
+        osc_12m = extrair_numero(osc_match) if osc_match else 0.0
+        
+        # Div Yield - busca especificamente
+        div_match = re.search(r'>Div\. Yield<.*?<span[^>]*>([0-9.,]+)%', html, re.IGNORECASE | re.DOTALL)
+        div = extrair_numero(div_match) if div_match else 0.0
+        
+        # P/VP - busca especificamente
+        pvp_match = re.search(r'>P/VP<.*?<span[^>]*>([0-9.,]+)<', html, re.IGNORECASE | re.DOTALL)
+        pvp = extrair_numero(pvp_match) if pvp_match else 0.0
 
         resultado_12m = 0.0
         receita_match = re.search(r'Últimos 12 meses.*?Receita Líquida.*?<span[^>]*>([0-9.,]+)', html, re.IGNORECASE | re.DOTALL)
