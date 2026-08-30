@@ -11,6 +11,7 @@ import re
 
 WORKSHEET_NAME = "Dados"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+TICKERS_COM_PRECO_SCRAPER = {'ITUB3', 'BBAS3', 'SUZB3', 'ABEV3', 'WEGE3', 'MGLU3', 'LREN3', 'PRIO3', 'VALE3', 'CSNA3', 'SBSP3', 'RENT3'}
 
 def conectar():
     try:
@@ -115,15 +116,25 @@ def main(inicio=None, fim=None):
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
-            ws.update(range_name=f'D{idx}:J{idx}', values=[[
-                round(dados['preco'], 2) if dados['preco'] else 0,
-                f"{round(dados['roe'], 2)}%",
-                f"{round(dados['marg'], 2)}%",
-                f"{round(dados['res_12m'], 2)}%",
-                f"{round(dados['osc_12m'], 2)}%",
-                f"{round(dados['div'], 2)}%",
-                round(dados['pvp'], 2) if dados['pvp'] else 0
-            ]])
+            if ticker in TICKERS_COM_PRECO_SCRAPER:
+                ws.update(range_name=f'D{idx}:J{idx}', values=[[
+                    round(dados['preco'], 2) if dados['preco'] else 0,
+                    f"{round(dados['roe'], 2)}%",
+                    f"{round(dados['marg'], 2)}%",
+                    f"{round(dados['res_12m'], 2)}%",
+                    f"{round(dados['osc_12m'], 2)}%",
+                    f"{round(dados['div'], 2)}%",
+                    round(dados['pvp'], 2) if dados['pvp'] else 0
+                ]])
+            else:
+                ws.update(range_name=f'E{idx}:J{idx}', values=[[
+                    f"{round(dados['roe'], 2)}%",
+                    f"{round(dados['marg'], 2)}%",
+                    f"{round(dados['res_12m'], 2)}%",
+                    f"{round(dados['osc_12m'], 2)}%",
+                    f"{round(dados['div'], 2)}%",
+                    round(dados['pvp'], 2) if dados['pvp'] else 0
+                ]])
             print("OK")
             ok_count += 1
         except Exception as e:
