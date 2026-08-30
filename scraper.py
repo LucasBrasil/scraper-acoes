@@ -96,7 +96,7 @@ def main(inicio=None, fim=None):
         if not linha or not linha[0]:
             continue
         ticker = linha[0].strip().upper()
-        if not (len(ticker) in [5, 6] and ticker[:-1].isalpha() and ticker[-1].isdigit()):
+        if not (len(ticker) in [5, 6] and ticker.isalnum()):
             continue
         contador += 1
         if contador < inicio or contador > fim:
