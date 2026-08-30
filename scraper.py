@@ -31,7 +31,7 @@ def buscar(ticker, tentativa=1):
     try:
         url = f"https://fundamentus.com.br/detalhes.php?papel={ticker}"
         h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
-        r = requests.get(url, headers=h, timeout=45)
+        r = requests.get(url, headers=h, timeout=60)
         if r.status_code != 200:
             return None
         html = r.text
@@ -104,7 +104,13 @@ def main(inicio=None, fim=None):
         if contador < inicio or contador > fim:
             continue
         print(f"[{contador:3d}] {ticker:6s}...", end=" ", flush=True)
-        dados = buscar(ticker)
+        try:
+            dados = buscar(ticker)
+        except Exception as e:
+            print(f"ERR(busca): {str(e)[:20]}")
+            dados = None
+            time.sleep(5)
+            continue
         if dados and (dados['preco'] or dados['roe'] or dados['marg']):
             tickers_dados.append((idx, ticker, dados))
             print("OK")
