@@ -66,8 +66,12 @@ class LowestSequenceCriterion extends ICriterion {
       sequence = isConsecutive ? sequence.concat(frequency) : [frequency];
       const nextFrequency = frequencies[index + 1];
       const endsSequence = index === frequencies.length - 1 || frequency - nextFrequency !== 1;
-      if (endsSequence && sequence.length >= 3) {
-        selectedFrequencies.add(sequence[sequence.length - 1]);
+      if (endsSequence && sequence.length >= 2) {
+        const lowestFrequency = sequence[sequence.length - 1];
+        const lowestFrequencyCount = frequencies.filter(f => f === lowestFrequency).length;
+        if (lowestFrequencyCount === 1) {
+          selectedFrequencies.add(lowestFrequency);
+        }
       }
     });
     return selectedFrequencies;
