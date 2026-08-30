@@ -142,7 +142,7 @@ class SyndicateLotteryService {
     const config = new NewScoreStrategyConfig(
       { count: 10, weight: 2 },
       { count: 10, weight: 1 },
-      { weight: 2 },
+      { weight: 1 },
       { weight: 1 }
     );
 
