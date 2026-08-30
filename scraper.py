@@ -97,6 +97,8 @@ def main(inicio=None, fim=None):
             continue
         ticker = linha[0].strip().upper()
         if not (len(ticker) in [5, 6] and ticker.isalnum()):
+            if ticker:
+                print(f"SKIP linha {idx}: '{ticker}' (len={len(ticker)}, isalnum={ticker.isalnum()})")
             continue
         contador += 1
         if contador < inicio or contador > fim:
