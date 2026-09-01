@@ -101,6 +101,9 @@ class SyndicateGamesSheetRepository {
       Logger.log(`  -> Column ${colNumber}: ${drawnNumbers[i]}`);
       sheet.getRange(rowNumber, colNumber).setValue(drawnNumbers[i]);
     }
+
+    sheet.getRange(rowNumber, 61, 1, 6).setBackground('#000000');
+    sheet.getRange(rowNumber, 61, 1, 6).setFontColor('#FFFFFF');
     Logger.log(`[updateGameResult] Row ${rowNumber}: DONE`);
   }
 
