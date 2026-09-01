@@ -87,14 +87,21 @@ class SyndicateGamesSheetRepository {
     const range = sheet.getRange(rowNumber, 1, 1, 68);
     const row = range.getValues()[0];
 
+    Logger.log(`[updateGameResult] Row ${rowNumber}: drawnNumbers=[${drawnNumbers.join(',')}]`);
+
     if (this._hasResult(row)) {
+      Logger.log(`[updateGameResult] Row ${rowNumber}: already has result, skipping`);
       return;
     }
 
+    Logger.log(`[updateGameResult] Row ${rowNumber}: setting drawn numbers in columns 61-66`);
     const drawnColStart = 61;
     for (let i = 0; i < drawnNumbers.length; i++) {
-      sheet.getRange(rowNumber, drawnColStart + i).setValue(drawnNumbers[i]);
+      const colNumber = drawnColStart + i;
+      Logger.log(`  -> Column ${colNumber}: ${drawnNumbers[i]}`);
+      sheet.getRange(rowNumber, colNumber).setValue(drawnNumbers[i]);
     }
+    Logger.log(`[updateGameResult] Row ${rowNumber}: DONE`);
   }
 
   formatGameResultRow(rowNumber, selectedNumbers, drawnNumbers) {
