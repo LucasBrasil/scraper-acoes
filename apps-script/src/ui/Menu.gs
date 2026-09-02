@@ -11,6 +11,7 @@ function onOpen() {
     .addItem('Atualizar Seleção', 'updateSelection')
     .addItem('Gerar Bolão', 'generateSyndicateLottery')
     .addItem('Atualizar Resultados (Bolão)', 'updateSyndicateLotteryResults')
+    .addItem('Analisar Pares de Números', 'analyzePairFrequency')
     .addToUi();
 }
 
@@ -291,6 +292,54 @@ function _persistSyndicateLotteryGames(result) {
   } catch (error) {
     Logger.log(`Aviso: Não foi possível persistir os jogos: ${error.message}`);
   }
+}
+
+/** Analisa pares de números frequentes no histórico e popula a aba "Pares". */
+function analyzePairFrequency() {
+  try {
+    const historyRepository = new HistoryRepository();
+    const analyzer = new PairFrequencyAnalyzer(historyRepository);
+
+    const pairs = analyzer.analyze();
+
+    _populatePairsSheet(pairs);
+
+    const message = `Análise concluída!\n\nPares únicos encontrados: ${pairs.length}\nMaior frequência: ${pairs.length > 0 ? pairs[0].frequency : 0}\n\nDados gravados na aba "Pares".`;
+    SpreadsheetApp.getUi().alert(message);
+  } catch (error) {
+    SpreadsheetApp.getUi().alert(`Erro na análise de pares: ${error.message}`);
+    Logger.log(`ERRO: ${error.message}`);
+    throw error;
+  }
+}
+
+/** Popula a aba "Pares" com os dados de frequência. */
+function _populatePairsSheet(pairs) {
+  const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = spreadsheet.getSheetByName('Pares');
+
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet('Pares');
+  }
+
+  sheet.clear();
+
+  const headers = ['Número 1', 'Número 2', 'Frequência'];
+  sheet.appendRow(headers);
+
+  const data = pairs.map(p => [p.num1, p.num2, p.frequency]);
+  if (data.length > 0) {
+    sheet.getRange(2, 1, data.length, 3).setValues(data);
+  }
+
+  const headerRange = sheet.getRange(1, 1, 1, 3);
+  headerRange.setFontWeight('bold');
+  headerRange.setBackground('#4285F4');
+  headerRange.setFontColor('#FFFFFF');
+
+  sheet.setColumnWidth(1, 100);
+  sheet.setColumnWidth(2, 100);
+  sheet.setColumnWidth(3, 120);
 }
 
 /** Atualiza os resultados dos jogos já gerados na aba "Jogos Bolão". */
