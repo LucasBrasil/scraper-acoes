@@ -117,28 +117,6 @@ class SyndicateLotteryService {
     const statisticDTOs = statistics.map(stat => new StatisticDTO(stat));
     strategiesRepo.replaceAll(statisticDTOs);
 
-    const criteriaContext = new CriteriaContext(
-      strategiesRepo.getAll(),
-      this._getCriteriasAsMap(),
-      null,
-      { source: 'syndicate-lottery' }
-    );
-
-    const criteriaEngine = new CriteriaEngine();
-    const criteriaRegistry = new CriteriaRegistry();
-    const criterionResults = criteriaEngine.evaluate(criteriaContext, criteriaRegistry.getAll());
-    const numberAnalyses = NumberAnalysis.fromStatisticsAndCriterionResults(
-      strategiesRepo.getAll(),
-      criterionResults
-    );
-
-    const scoreEngine = new ScoreEngine();
-    const scoreResults = scoreEngine.calculate(numberAnalyses);
-    strategiesRepo.updateScores(scoreResults);
-
-    const rankingEngine = new RankingEngine();
-    const rankingResults = rankingEngine.rank(strategiesRepo.getScoreResults());
-
     const config = new NewScoreStrategyConfig(
       { count: 10, weight: 2 },
       { count: 10, weight: 1 },
@@ -148,22 +126,99 @@ class SyndicateLotteryService {
 
     const lastDrawn = contests.length > 0 ? contests[contests.length - 1].drawnNumbers : [];
     const calculator = new NewScoreCalculator(config, statistics, lastDrawn);
-    const calculations = calculator.calculate();
+    const baseCalculations = calculator.calculate();
 
-    const tiebreaker = new NewScoreTiebreakerPolicy();
-    const ranking = rankingResults.map(r => r.number);
+    const selectedNumbers = [];
+    const remainingCandidates = new Set(baseCalculations.map(c => c.getNumber()));
 
-    const sorted = calculations.sort((a, b) => {
-      const aPosition = ranking.indexOf(a.getNumber()) + 1 || 61;
-      const bPosition = ranking.indexOf(b.getNumber()) + 1 || 61;
+    Logger.log('[_selectNumbers] Starting sequential selection with pair frequency');
 
-      return tiebreaker.compare(
-        { number: a.getNumber(), score: a.getTotalScore(), position: aPosition },
-        { number: b.getNumber(), score: b.getTotalScore(), position: bPosition }
-      );
+    for (let position = 0; position < 7; position++) {
+      let bestNumber = null;
+      let bestScore = -Infinity;
+
+      const referenceNumber = position > 0 ? selectedNumbers[selectedNumbers.length - 1] : null;
+      Logger.log(`[_selectNumbers] Position ${position + 1}, Reference: ${referenceNumber}`);
+
+      for (const candidate of remainingCandidates) {
+        const baseScore = baseCalculations.find(c => c.getNumber() === candidate)?.getTotalScore() || 0;
+        let pairBonus = 0;
+
+        if (referenceNumber !== null) {
+          pairBonus = this._calculatePairBonus(candidate, referenceNumber);
+        }
+
+        const totalScore = baseScore + pairBonus;
+        Logger.log(`  Candidate ${candidate}: base=${baseScore}, pair=${pairBonus}, total=${totalScore}`);
+
+        if (totalScore > bestScore || (totalScore === bestScore && candidate < bestNumber)) {
+          bestScore = totalScore;
+          bestNumber = candidate;
+        }
+      }
+
+      if (bestNumber !== null) {
+        selectedNumbers.push(bestNumber);
+        remainingCandidates.delete(bestNumber);
+        Logger.log(`[_selectNumbers] Selected: ${bestNumber} (score=${bestScore})`);
+      }
+    }
+
+    return selectedNumbers.sort((a, b) => a - b);
+  }
+
+  _calculatePairBonus(candidate, referenceNumber) {
+    const { mostFrequent, leastFrequent } = this._findPairFrequencies(candidate, referenceNumber);
+
+    if (candidate === mostFrequent) {
+      Logger.log(`    -> Pair bonus for ${candidate}: +2 (most frequent with ${referenceNumber})`);
+      return 2;
+    } else if (candidate === leastFrequent) {
+      Logger.log(`    -> Pair bonus for ${candidate}: -1 (least frequent with ${referenceNumber})`);
+      return -1;
+    }
+
+    return 0;
+  }
+
+  _findPairFrequencies(candidate, referenceNumber) {
+    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = spreadsheet.getSheetByName('Pares');
+
+    if (!sheet) {
+      return { mostFrequent: null, leastFrequent: null };
+    }
+
+    const values = sheet.getDataRange().getValues();
+    if (values.length <= 1) {
+      return { mostFrequent: null, leastFrequent: null };
+    }
+
+    const pairsWithRef = [];
+    for (let i = 1; i < values.length; i++) {
+      const num1 = values[i][0];
+      const num2 = values[i][1];
+      const frequency = values[i][2];
+
+      if ((num1 === referenceNumber && num2 !== referenceNumber) ||
+          (num2 === referenceNumber && num1 !== referenceNumber)) {
+        const otherNumber = num1 === referenceNumber ? num2 : num1;
+        pairsWithRef.push({ number: otherNumber, frequency: frequency });
+      }
+    }
+
+    if (pairsWithRef.length === 0) {
+      return { mostFrequent: null, leastFrequent: null };
+    }
+
+    pairsWithRef.sort((a, b) => {
+      if (b.frequency !== a.frequency) {
+        return b.frequency - a.frequency;
+      }
+      return a.number - b.number;
     });
 
-    return sorted.slice(0, 7).map(c => c.getNumber()).sort((a, b) => a - b);
+    return { mostFrequent: pairsWithRef[0].number, leastFrequent: pairsWithRef[pairsWithRef.length - 1].number };
   }
 
   _distributeGames(selectedNumbers) {
