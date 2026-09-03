@@ -66,9 +66,9 @@ def buscar(ticker, tentativa=1):
                 resultado_12m = (lucro / receita) * 100
 
         # Novos indicadores
-        pl = extrair_numero(re.search(r'>P/L<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        lucro = extrair_numero(re.search(r'>Lucro Líquido<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
-        ativo = extrair_numero(re.search(r'>Ativo Total<.*?<span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
+        pl = extrair_numero(re.search(r'>P/L<.*?<span class="txt">\s*([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL))
+        lucro = extrair_numero(re.search(r'>Lucro Líquido<.*?<span class="txt">\s*([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL))
+        ativo = extrair_numero(re.search(r'>P/Ativos<.*?<span class="txt">\s*([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL))
 
         return {'preco': cotacao, 'roe': roe, 'marg': marg, 'osc_12m': osc_12m, 'res_12m': resultado_12m, 'div': div, 'pvp': pvp, 'pl': pl, 'lucro': lucro, 'ativo': ativo}
     except requests.exceptions.Timeout:
@@ -126,34 +126,17 @@ def main(inicio=None, fim=None):
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
+            ws.update(range_name=f'B{idx}', values=[[round(dados['pl'], 2) if dados['pl'] else 0]])
+            ws.update(range_name=f'C{idx}', values=[[round(dados['lucro'], 0) if dados['lucro'] else 0]])
             if ticker in TICKERS_COM_PRECO_SCRAPER:
-                ws.update(range_name=f'B{idx}:L{idx}', values=[[
-                    round(dados['pl'], 2) if dados['pl'] else 0,
-                    round(dados['lucro'], 0) if dados['lucro'] else 0,
-                    round(dados['preco'], 2) if dados['preco'] else 0,
-                    f"{round(dados['roe'], 2)}%",
-                    f"{round(dados['marg'], 2)}%",
-                    f"{round(dados['res_12m'], 2)}%",
-                    f"{round(dados['osc_12m'], 2)}%",
-                    f"{round(dados['div'], 2)}%",
-                    round(dados['pvp'], 2) if dados['pvp'] else 0,
-                    '',  # Coluna K (NOTA)
-                    round(dados['ativo'], 0) if dados['ativo'] else 0
-                ]])
-            else:
-                ws.update(range_name=f'B{idx}:L{idx}', values=[[
-                    round(dados['pl'], 2) if dados['pl'] else 0,
-                    round(dados['lucro'], 0) if dados['lucro'] else 0,
-                    '',  # Coluna D (Preco - Google Finance)
-                    f"{round(dados['roe'], 2)}%",
-                    f"{round(dados['marg'], 2)}%",
-                    f"{round(dados['res_12m'], 2)}%",
-                    f"{round(dados['osc_12m'], 2)}%",
-                    f"{round(dados['div'], 2)}%",
-                    round(dados['pvp'], 2) if dados['pvp'] else 0,
-                    '',  # Coluna K (NOTA)
-                    round(dados['ativo'], 0) if dados['ativo'] else 0
-                ]])
+                ws.update(range_name=f'D{idx}', values=[[round(dados['preco'], 2) if dados['preco'] else 0]])
+            ws.update(range_name=f'E{idx}', values=[[f"{round(dados['roe'], 2)}%"]])
+            ws.update(range_name=f'F{idx}', values=[[f"{round(dados['marg'], 2)}%"]])
+            ws.update(range_name=f'G{idx}', values=[[f"{round(dados['res_12m'], 2)}%"]])
+            ws.update(range_name=f'H{idx}', values=[[f"{round(dados['osc_12m'], 2)}%"]])
+            ws.update(range_name=f'I{idx}', values=[[f"{round(dados['div'], 2)}%"]])
+            ws.update(range_name=f'J{idx}', values=[[round(dados['pvp'], 2) if dados['pvp'] else 0]])
+            ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else 0]])
             print("OK")
             ok_count += 1
         except Exception as e:
