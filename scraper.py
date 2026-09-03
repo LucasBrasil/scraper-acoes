@@ -68,7 +68,7 @@ def buscar(ticker, tentativa=1):
         # Novos indicadores
         pl = extrair_numero(re.search(r'>P/L<.*?<span class="txt">\s*([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL))
         lucro = extrair_numero(re.search(r'>Lucro Líquido<.*?<span class="txt">\s*([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL))
-        ativo = extrair_numero(re.search(r'>P/Ativos<.*?<span class="txt">\s*([0-9.,\-]+)', html, re.IGNORECASE | re.DOTALL))
+        ativo = extrair_numero(re.search(r'>Ativo</span></td>\s*<td[^>]*><span class="txt">\s*([0-9.,]+)', html, re.IGNORECASE | re.DOTALL))
 
         return {'preco': cotacao, 'roe': roe, 'marg': marg, 'osc_12m': osc_12m, 'res_12m': resultado_12m, 'div': div, 'pvp': pvp, 'pl': pl, 'lucro': lucro, 'ativo': ativo}
     except requests.exceptions.Timeout:
