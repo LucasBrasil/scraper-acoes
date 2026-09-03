@@ -135,20 +135,37 @@ def main():
             print(f"  Ativo: {int(dados['ativo'])}")
 
             # Gravar na planilha
-            preco_val = round(dados['preco'], 2) if (ticker in TICKERS_COM_PRECO_SCRAPER and dados['preco']) else ''
-            ws.update(range_name=f'B{idx}:L{idx}', values=[[
-                round(dados['pl'], 2) if dados['pl'] else '',
-                round(dados['lucro'], 0) if dados['lucro'] else '',
-                preco_val,
-                f"{round(dados['roe'], 2)}%",
-                f"{round(dados['marg'], 2)}%",
-                f"{round(dados['res_12m'], 2)}%",
-                f"{round(dados['osc_12m'], 2)}%",
-                f"{round(dados['div'], 2)}%",
-                round(dados['pvp'], 2) if dados['pvp'] else '',
-                '',  # Coluna K (NOTA)
-                round(dados['ativo'], 0) if dados['ativo'] else ''
-            ]])
+            if ticker in TICKERS_COM_PRECO_SCRAPER:
+                # Grava tudo incluindo preço (B a L)
+                ws.update(range_name=f'B{idx}:L{idx}', values=[[
+                    round(dados['pl'], 2) if dados['pl'] else '',
+                    round(dados['lucro'], 0) if dados['lucro'] else '',
+                    round(dados['preco'], 2) if dados['preco'] else '',
+                    f"{round(dados['roe'], 2)}%",
+                    f"{round(dados['marg'], 2)}%",
+                    f"{round(dados['res_12m'], 2)}%",
+                    f"{round(dados['osc_12m'], 2)}%",
+                    f"{round(dados['div'], 2)}%",
+                    round(dados['pvp'], 2) if dados['pvp'] else '',
+                    '',  # Coluna K (NOTA)
+                    round(dados['ativo'], 0) if dados['ativo'] else ''
+                ]])
+            else:
+                # Grava sem preco (B,C,E-L) deixando D intacta
+                ws.update(range_name=f'B{idx}:C{idx}', values=[[
+                    round(dados['pl'], 2) if dados['pl'] else '',
+                    round(dados['lucro'], 0) if dados['lucro'] else ''
+                ]])
+                ws.update(range_name=f'E{idx}:L{idx}', values=[[
+                    f"{round(dados['roe'], 2)}%",
+                    f"{round(dados['marg'], 2)}%",
+                    f"{round(dados['res_12m'], 2)}%",
+                    f"{round(dados['osc_12m'], 2)}%",
+                    f"{round(dados['div'], 2)}%",
+                    round(dados['pvp'], 2) if dados['pvp'] else '',
+                    '',  # Coluna K (NOTA)
+                    round(dados['ativo'], 0) if dados['ativo'] else ''
+                ]])
             print("  ✓ GRAVADO NA PLANILHA")
             ok_count += 1
         except Exception as e:
