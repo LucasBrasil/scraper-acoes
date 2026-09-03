@@ -126,21 +126,26 @@ def main(inicio=None, fim=None):
     for i, (idx, ticker, dados) in enumerate(tickers_dados, 1):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
-            ws.update(range_name=f'B{idx}', values=[[round(dados['pl'], 2) if dados['pl'] else 0]])
-            ws.update(range_name=f'C{idx}', values=[[round(dados['lucro'], 0) if dados['lucro'] else 0]])
-            if ticker in TICKERS_COM_PRECO_SCRAPER:
-                ws.update(range_name=f'D{idx}', values=[[round(dados['preco'], 2) if dados['preco'] else 0]])
-            ws.update(range_name=f'E{idx}', values=[[f"{round(dados['roe'], 2)}%"]])
-            ws.update(range_name=f'F{idx}', values=[[f"{round(dados['marg'], 2)}%"]])
-            ws.update(range_name=f'G{idx}', values=[[f"{round(dados['res_12m'], 2)}%"]])
-            ws.update(range_name=f'H{idx}', values=[[f"{round(dados['osc_12m'], 2)}%"]])
-            ws.update(range_name=f'I{idx}', values=[[f"{round(dados['div'], 2)}%"]])
-            ws.update(range_name=f'J{idx}', values=[[round(dados['pvp'], 2) if dados['pvp'] else 0]])
-            ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else 0]])
+            # Determinar valor do preço (vazio se usar Google Finance)
+            preco_val = round(dados['preco'], 2) if (ticker in TICKERS_COM_PRECO_SCRAPER and dados['preco']) else ''
+            # Gravar tudo em um único update para evitar problemas
+            ws.update(range_name=f'B{idx}:L{idx}', values=[[
+                round(dados['pl'], 2) if dados['pl'] else '',
+                round(dados['lucro'], 0) if dados['lucro'] else '',
+                preco_val,
+                f"{round(dados['roe'], 2)}%",
+                f"{round(dados['marg'], 2)}%",
+                f"{round(dados['res_12m'], 2)}%",
+                f"{round(dados['osc_12m'], 2)}%",
+                f"{round(dados['div'], 2)}%",
+                round(dados['pvp'], 2) if dados['pvp'] else '',
+                '',  # Coluna K (NOTA)
+                round(dados['ativo'], 0) if dados['ativo'] else ''
+            ]])
             print("OK")
             ok_count += 1
         except Exception as e:
-            print(f"ERR: {str(e)[:25]}")
+            print(f"ERR: {str(e)[:40]}")
         if i < len(tickers_dados):
             time.sleep(10)
     print("\n" + "=" * 60)
