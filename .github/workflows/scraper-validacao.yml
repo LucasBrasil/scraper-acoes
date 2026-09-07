@@ -11,8 +11,10 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      - run: pip install requests gspread google-auth-oauthlib
-      - run: python scraper_validation.py
+      - run: pip install --upgrade requests gspread google-auth-oauthlib
+      - run: find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; find . -type f -name "*.pyc" -delete 2>/dev/null; echo "✓ Cache limpo"
+      - run: grep -c "f\"{round.*%\"" scraper_validation.py && echo "❌ ERRO: Arquivo antigo com %" || echo "✓ OK: Arquivo correto (sem %)"
+      - run: python -u scraper_validation.py
         env:
           SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
           GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
