@@ -141,11 +141,11 @@ def main():
                     round(dados['pl'], 2) if dados['pl'] else '',
                     round(dados['lucro'], 0) if dados['lucro'] else '',
                     round(dados['preco'], 2) if dados['preco'] else '',
-                    f"{round(dados['roe'], 2)}%",
-                    f"{round(dados['marg'], 2)}%",
-                    f"{round(dados['res_12m'], 2)}%",
-                    f"{round(dados['osc_12m'], 2)}%",
-                    f"{round(dados['div'], 2)}%",
+                    round(dados['roe'], 2) if dados['roe'] else '',
+                    round(dados['marg'], 2) if dados['marg'] else '',
+                    round(dados['res_12m'], 2) if dados['res_12m'] else '',
+                    round(dados['osc_12m'], 2) if dados['osc_12m'] else '',
+                    round(dados['div'], 2) if dados['div'] else '',
                     round(dados['pvp'], 2) if dados['pvp'] else '',
                     '',  # Coluna K (NOTA)
                     round(dados['ativo'], 0) if dados['ativo'] else ''
@@ -157,11 +157,11 @@ def main():
                     round(dados['lucro'], 0) if dados['lucro'] else ''
                 ]])
                 ws.update(range_name=f'E{idx}:L{idx}', values=[[
-                    f"{round(dados['roe'], 2)}%",
-                    f"{round(dados['marg'], 2)}%",
-                    f"{round(dados['res_12m'], 2)}%",
-                    f"{round(dados['osc_12m'], 2)}%",
-                    f"{round(dados['div'], 2)}%",
+                    round(dados['roe'], 2) if dados['roe'] else '',
+                    round(dados['marg'], 2) if dados['marg'] else '',
+                    round(dados['res_12m'], 2) if dados['res_12m'] else '',
+                    round(dados['osc_12m'], 2) if dados['osc_12m'] else '',
+                    round(dados['div'], 2) if dados['div'] else '',
                     round(dados['pvp'], 2) if dados['pvp'] else '',
                     '',  # Coluna K (NOTA)
                     round(dados['ativo'], 0) if dados['ativo'] else ''
