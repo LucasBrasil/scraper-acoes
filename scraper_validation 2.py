@@ -136,7 +136,7 @@ def main():
 
             # Gravar na planilha
             preco_val = round(dados['preco'], 2) if (ticker in TICKERS_COM_PRECO_SCRAPER and dados['preco']) else ''
-            ws.update(range_name=f'B{idx}:L{idx}', values=[[
+            ws.update(range_name=f'B{idx}:J{idx}', values=[[
                 round(dados['pl'], 2) if dados['pl'] else '',
                 round(dados['lucro'], 0) if dados['lucro'] else '',
                 preco_val,
@@ -145,10 +145,9 @@ def main():
                 round(dados['res_12m'], 2) if dados['res_12m'] else '',
                 round(dados['osc_12m'], 2) if dados['osc_12m'] else '',
                 round(dados['div'], 2) if dados['div'] else '',
-                round(dados['pvp'], 2) if dados['pvp'] else '',
-                '',  # Coluna K (NOTA)
-                round(dados['ativo'], 0) if dados['ativo'] else ''
+                round(dados['pvp'], 2) if dados['pvp'] else ''
             ]])
+            ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else '']])
             print("  ✓ GRAVADO NA PLANILHA")
             ok_count += 1
         except Exception as e:

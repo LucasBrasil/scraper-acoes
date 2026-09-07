@@ -127,8 +127,8 @@ def main(inicio=None, fim=None):
         try:
             print(f"[{i:3d}/{len(tickers_dados)}] {ticker:6s}...", end=" ", flush=True)
             if ticker in TICKERS_COM_PRECO_SCRAPER:
-                # Grava tudo incluindo preço (B a L)
-                ws.update(range_name=f'B{idx}:L{idx}', values=[[
+                # Grava B:J (sem Nota em K), depois L (Ativo) para preservar fórmula em K
+                ws.update(range_name=f'B{idx}:J{idx}', values=[[
                     round(dados['pl'], 2) if dados['pl'] else '',
                     round(dados['lucro'], 0) if dados['lucro'] else '',
                     round(dados['preco'], 2) if dados['preco'] else '',
@@ -137,26 +137,24 @@ def main(inicio=None, fim=None):
                     round(dados['res_12m'], 2) if dados['res_12m'] else '',
                     round(dados['osc_12m'], 2) if dados['osc_12m'] else '',
                     round(dados['div'], 2) if dados['div'] else '',
-                    round(dados['pvp'], 2) if dados['pvp'] else '',
-                    '',  # Coluna K (NOTA)
-                    round(dados['ativo'], 0) if dados['ativo'] else ''
+                    round(dados['pvp'], 2) if dados['pvp'] else ''
                 ]])
+                ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else '']])
             else:
-                # Grava sem preco (B,C,E-L) deixando D intacta
+                # Grava sem preco (B,C,E-J) deixando D e K intactas
                 ws.update(range_name=f'B{idx}:C{idx}', values=[[
                     round(dados['pl'], 2) if dados['pl'] else '',
                     round(dados['lucro'], 0) if dados['lucro'] else ''
                 ]])
-                ws.update(range_name=f'E{idx}:L{idx}', values=[[
+                ws.update(range_name=f'E{idx}:J{idx}', values=[[
                     round(dados['roe'], 2) if dados['roe'] else '',
                     round(dados['marg'], 2) if dados['marg'] else '',
                     round(dados['res_12m'], 2) if dados['res_12m'] else '',
                     round(dados['osc_12m'], 2) if dados['osc_12m'] else '',
                     round(dados['div'], 2) if dados['div'] else '',
-                    round(dados['pvp'], 2) if dados['pvp'] else '',
-                    '',  # Coluna K (NOTA)
-                    round(dados['ativo'], 0) if dados['ativo'] else ''
+                    round(dados['pvp'], 2) if dados['pvp'] else ''
                 ]])
+                ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else '']])
             print("OK")
             ok_count += 1
         except Exception as e:
