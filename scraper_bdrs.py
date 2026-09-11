@@ -69,11 +69,10 @@ def buscar_dados_bdr(bdr_ticker, ticker_original, tentativa=1):
     try:
         dados = {}
 
-        # 1. Dados do BDR na B3 (preço/volume/variação em BRL)
+        # 1. Dados do BDR na B3 (volume/variação em BRL) - preço vem do GOOGLEFINANCE na planilha
         bdr_yf = yf.Ticker(f"{bdr_ticker}.SA")
         bdr_info = bdr_yf.info
 
-        dados['vl_atu'] = bdr_info.get('currentPrice') or bdr_info.get('regularMarketPrice')
         dados['liquidez'] = bdr_info.get('averageVolume')
 
         # Variação 12M do BDR (reflete câmbio)
@@ -162,11 +161,10 @@ def main(inicio=None, fim=None):
             continue
 
         try:
-            # Colunas: A=BRD, B=Vl.Pg (manual, não mexer), C=Vl.Atu, D=ROE, E=P/L,
-            # F=P/VP, G=Proporção (fora de escopo), H=Liquidez, I=Receita,
+            # Colunas: A=BRD, B=Vl.Pg (manual, não mexer), C=Vl.Atu (GOOGLEFINANCE, não mexer),
+            # D=ROE, E=P/L, F=P/VP, G=Proporção (fora de escopo), H=Liquidez, I=Receita,
             # J=Lucro Líquido, K=12M, L=%Div
-            ws.update(range_name=f'C{idx}:F{idx}', values=[[
-                round(dados['vl_atu'], 2) if dados['vl_atu'] else '',
+            ws.update(range_name=f'D{idx}:F{idx}', values=[[
                 round(dados['roe'] * 100, 2) if dados['roe'] else '',
                 round(dados['pl'], 2) if dados['pl'] else '',
                 round(dados['pvp'], 2) if dados['pvp'] else ''
