@@ -3,12 +3,11 @@
 Scraper de ETFs.
 Fontes:
 - Status Invest: Taxa de administração, Patrimônio líquido, Liquidez média diária
-- yfinance: Retornos (12M, 3A, 5A, 10A) calculados via histórico de preços
+- yfinance: Retornos (12M, 3A, 5A) calculados via histórico de preços
   (total return, incluindo dividendos) e DY (dividend yield)
 
-"Nº Ativos" fica de fora: não há fonte pública confiável e uniforme
-(o conceito é ambíguo entre ETFs - ex: IVVB11 investe em 1 fundo
-espelho americano, enquanto SMAL11 replica ~90 ações).
+Colunas "Nº Ativos" e "Ret. 10 Anos" removidas da planilha pelo usuário
+(sem fonte pública confiável e uniforme para a primeira).
 """
 import gspread
 from google.oauth2.service_account import Credentials
@@ -157,7 +156,6 @@ def buscar_retornos_e_dy(ticker):
         ret_12m = buscar_retorno_periodo(hist, 1)
         ret_3a = buscar_retorno_periodo(hist, 3)
         ret_5a = buscar_retorno_periodo(hist, 5)
-        ret_10a = buscar_retorno_periodo(hist, 10)
 
         info = yf_com_timeout(lambda: t.info)
         # TODO: validar o formato real (percentual puro vs fração) assim que
@@ -169,7 +167,6 @@ def buscar_retornos_e_dy(ticker):
             'ret_12m': ret_12m,
             'ret_3a': ret_3a,
             'ret_5a': ret_5a,
-            'ret_10a': ret_10a,
             'dy': dy,
         }
     except YFTimeout:
@@ -213,18 +210,17 @@ def main(inicio=None, fim=None):
 
         try:
             # Colunas: A=ETF, B=Vl.Atu (GOOGLEFINANCE, com fallback), C=Tx.Admin,
-            # D=Pat.Liq., E=Vol.Diário, F=Nº Ativos (fora de escopo), G=Ret.12M,
-            # H=Ret.3A, I=Ret.5A, J=Ret.10A, K=DY
+            # D=Pat.Liq., E=Vol.Diário, F=Ret.12M, G=Ret.3A, H=Ret.5A, I=DY
+            # ("Nº Ativos" e "Ret.10A" removidos da planilha)
             ws.update(range_name=f'C{idx}:E{idx}', values=[[
                 si['taxa_adm'] if si and si['taxa_adm'] is not None else '',
                 round(si['patrim_liquido'], 0) if si and si['patrim_liquido'] is not None else '',
                 round(si['vol_diario'], 0) if si and si['vol_diario'] is not None else '',
             ]])
-            ws.update(range_name=f'G{idx}:K{idx}', values=[[
+            ws.update(range_name=f'F{idx}:I{idx}', values=[[
                 round(retornos['ret_12m'], 2) if retornos and retornos['ret_12m'] is not None else '',
                 round(retornos['ret_3a'], 2) if retornos and retornos['ret_3a'] is not None else '',
                 round(retornos['ret_5a'], 2) if retornos and retornos['ret_5a'] is not None else '',
-                round(retornos['ret_10a'], 2) if retornos and retornos['ret_10a'] is not None else '',
                 round(retornos['dy'], 2) if retornos and retornos['dy'] is not None else '',
             ]])
             print("OK")
