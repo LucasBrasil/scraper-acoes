@@ -18,6 +18,7 @@ import json
 import os
 import sys
 import time
+import math
 import yfinance as yf
 from yf_utils import yf_com_timeout, YFTimeout
 
@@ -128,14 +129,14 @@ def buscar_retorno_periodo(hist, anos):
     if hist.empty:
         return None
     dias = int(anos * 252)  # dias úteis aproximados
-    # margem de 5% para tolerar feriados/dias sem pregão
-    if len(hist) < dias * 0.95:
-        return None
     idx_ini = len(hist) - dias - 1
+    if idx_ini < 0:
+        # Não há histórico suficiente para o período completo
+        return None
 
     preco_ini = hist['Close'].iloc[idx_ini]
     preco_fim = hist['Close'].iloc[-1]
-    if not preco_ini:
+    if not preco_ini or math.isnan(preco_ini) or math.isnan(preco_fim):
         return None
     return ((preco_fim - preco_ini) / preco_ini) * 100
 
@@ -145,6 +146,11 @@ def buscar_retornos_e_dy(ticker):
         # auto_adjust=True (padrão): Close já embute dividendos reinvestidos,
         # o que é exatamente o que queremos para "retorno total"
         hist = yf_com_timeout(lambda: t.history(period="10y"))
+        if hist.empty:
+            return None
+        # O candle do dia mais recente às vezes vem com Close=NaN (pregão
+        # ainda em andamento / dado não fechado) - descarta linhas inválidas
+        hist = hist[hist['Close'].notna()]
         if hist.empty:
             return None
 
