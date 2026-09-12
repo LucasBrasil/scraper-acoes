@@ -1,0 +1,19 @@
+name: Scraper FIIs
+on:
+  schedule:
+    - cron: '20 14 * * 1-5'
+  workflow_dispatch:
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - run: pip install --upgrade requests yfinance gspread google-auth-oauthlib
+      - run: find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; find . -type f -name "*.pyc" -delete 2>/dev/null; echo "Cache limpo"
+      - run: python -u scraper_fiis.py
+        env:
+          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
