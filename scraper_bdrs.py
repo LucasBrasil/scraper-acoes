@@ -11,6 +11,7 @@ import json
 import os
 import sys
 import time
+from yf_utils import yf_com_timeout, YFTimeout
 
 WORKSHEET_NAME = "Dados BDRs"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -86,11 +87,13 @@ def garantir_vl_atu(ws, idx, bdr_ticker):
                 valor_ok = False
 
         if not valor_ok:
-            info = yf.Ticker(f"{bdr_ticker}.SA").info
+            info = yf_com_timeout(lambda: yf.Ticker(f"{bdr_ticker}.SA").info)
             preco = info.get('currentPrice') or info.get('regularMarketPrice')
             if preco:
                 ws.update(range_name=f'C{idx}', values=[[round(preco, 2)]])
                 print(f"(Vl.Atu via yfinance: {round(preco, 2)}) ", end="")
+    except YFTimeout:
+        print("(yfinance timeout p/ Vl.Atu) ", end="")
     except Exception as e:
         print(f"(aviso Vl.Atu: {str(e)[:40]}) ", end="")
 
@@ -100,12 +103,12 @@ def buscar_dados_bdr(bdr_ticker, ticker_original, tentativa=1):
 
         # 1. Dados do BDR na B3 (volume/variação em BRL) - preço vem do GOOGLEFINANCE na planilha
         bdr_yf = yf.Ticker(f"{bdr_ticker}.SA")
-        bdr_info = bdr_yf.info
+        bdr_info = yf_com_timeout(lambda: bdr_yf.info)
 
         dados['liquidez'] = bdr_info.get('averageVolume')
 
         # Variação 12M do BDR (reflete câmbio)
-        hist = bdr_yf.history(period="1y")
+        hist = yf_com_timeout(lambda: bdr_yf.history(period="1y"))
         if not hist.empty and len(hist) > 1:
             preco_inicial = hist['Close'].iloc[0]
             preco_final = hist['Close'].iloc[-1]
@@ -119,7 +122,7 @@ def buscar_dados_bdr(bdr_ticker, ticker_original, tentativa=1):
         # 2. Fundamentos da empresa original
         if ticker_original:
             orig_yf = yf.Ticker(ticker_original)
-            orig_info = orig_yf.info
+            orig_info = yf_com_timeout(lambda: orig_yf.info)
 
             dados['roe'] = orig_info.get('returnOnEquity')
             dados['pl'] = orig_info.get('trailingPE')

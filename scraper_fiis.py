@@ -16,6 +16,7 @@ import os
 import sys
 import time
 import yfinance as yf
+from yf_utils import yf_com_timeout, YFTimeout
 
 WORKSHEET_NAME = "Dados FIIs"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -69,11 +70,13 @@ def garantir_vl_atu(ws, idx, ticker):
                 valor_ok = False
 
         if not valor_ok:
-            info = yf.Ticker(f"{ticker}.SA").info
+            info = yf_com_timeout(lambda: yf.Ticker(f"{ticker}.SA").info)
             preco = info.get('currentPrice') or info.get('regularMarketPrice')
             if preco:
                 ws.update(range_name=f'B{idx}', values=[[round(preco, 2)]])
                 print(f"(Vl.Atu via yfinance: {round(preco, 2)}) ", end="")
+    except YFTimeout:
+        print("(yfinance timeout p/ Vl.Atu) ", end="")
     except Exception as e:
         print(f"(aviso Vl.Atu: {str(e)[:40]}) ", end="")
 
@@ -155,7 +158,9 @@ def buscar_variacao_preco_12m(ticker):
         # auto_adjust=False: precisamos do preço NOMINAL real, não ajustado por
         # dividendos - caso contrário os dividendos seriam contados duas vezes
         # (uma vez embutidos no ajuste de preço, outra na soma manual em Rent.)
-        hist = yf.Ticker(f"{ticker}.SA").history(period="1y", auto_adjust=False)
+        hist = yf_com_timeout(
+            lambda: yf.Ticker(f"{ticker}.SA").history(period="1y", auto_adjust=False)
+        )
         if hist.empty or len(hist) < 2:
             return None
         preco_ini = hist['Close'].iloc[0]
@@ -214,16 +219,18 @@ def main(inicio=None, fim=None):
         elif preco_info:
             rent_total = preco_info['var_pct']
 
-        # DY Mensal = último rendimento / cotação atual (usa preço mais recente do yfinance como proxy)
+        garantir_vl_atu(ws, idx, ticker)
+
+        # DY Mensal = último rendimento / cotação atual (reusa o Vl.Atu já
+        # resolvido acima, evitando outra chamada redundante ao yfinance)
         dy_mensal = None
         try:
-            preco_atual = yf.Ticker(f"{ticker}.SA").info.get('currentPrice') or yf.Ticker(f"{ticker}.SA").info.get('regularMarketPrice')
+            preco_atual_txt = ws.acell(f'B{idx}').value
+            preco_atual = float(str(preco_atual_txt).replace(',', '.')) if preco_atual_txt else None
             if rendimento_mensal and preco_atual:
                 dy_mensal = (rendimento_mensal / preco_atual) * 100
         except Exception:
             pass
-
-        garantir_vl_atu(ws, idx, ticker)
 
         try:
             # Colunas: A=FII, B=Vl.Atu (GOOGLEFINANCE, com fallback via yfinance se der erro),
