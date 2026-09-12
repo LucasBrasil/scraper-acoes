@@ -48,6 +48,35 @@ def num_br(txt):
     except:
         return None
 
+def garantir_vl_atu(ws, idx, ticker):
+    """
+    Reescreve a fórmula GOOGLEFINANCE na coluna B; se após recalcular o
+    valor continuar como erro (#N/A etc.), substitui por um número fixo
+    vindo do yfinance como fallback.
+    """
+    try:
+        ws.update(range_name=f'B{idx}', values=[[f'=GoogleFinance(A{idx},"price")']],
+                  value_input_option='USER_ENTERED')
+        time.sleep(2)
+        valor = ws.acell(f'B{idx}').value
+
+        valor_ok = False
+        if valor:
+            try:
+                float(str(valor).replace(',', '.'))
+                valor_ok = True
+            except ValueError:
+                valor_ok = False
+
+        if not valor_ok:
+            info = yf.Ticker(f"{ticker}.SA").info
+            preco = info.get('currentPrice') or info.get('regularMarketPrice')
+            if preco:
+                ws.update(range_name=f'B{idx}', values=[[round(preco, 2)]])
+                print(f"(Vl.Atu via yfinance: {round(preco, 2)}) ", end="")
+    except Exception as e:
+        print(f"(aviso Vl.Atu: {str(e)[:40]}) ", end="")
+
 def buscar_fundamentus(ticker, tentativa=1):
     try:
         url = f"https://fundamentus.com.br/detalhes.php?papel={ticker}"
@@ -194,10 +223,12 @@ def main(inicio=None, fim=None):
         except Exception:
             pass
 
+        garantir_vl_atu(ws, idx, ticker)
+
         try:
-            # Colunas: A=FII, B=Vl.Atu (GOOGLEFINANCE, não mexer), C=VPA, D=Patrim líquido,
-            # E=Cotas emitidas, F=Último rendimento mensal, G=Taxa administração, H=Rent.,
-            # I=DY 12M, J=%Div (DY mensal), K=P/VP, L=Qtd Ativos
+            # Colunas: A=FII, B=Vl.Atu (GOOGLEFINANCE, com fallback via yfinance se der erro),
+            # C=VPA, D=Patrim líquido, E=Cotas emitidas, F=Último rendimento mensal,
+            # G=Taxa administração, H=Rent., I=DY 12M, J=%Div (DY mensal), K=P/VP, L=Qtd Ativos
             ws.update(range_name=f'C{idx}:L{idx}', values=[[
                 fund['vpa'] if fund['vpa'] is not None else '',
                 round(fund['patrim_liquido'], 0) if fund['patrim_liquido'] is not None else '',

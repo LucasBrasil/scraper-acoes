@@ -65,6 +65,35 @@ def conectar():
         print(f"Erro conexao: {e}")
         return None
 
+def garantir_vl_atu(ws, idx, bdr_ticker):
+    """
+    Reescreve a fórmula GOOGLEFINANCE na coluna C; se após recalcular o
+    valor continuar como erro (#N/A etc.), substitui por um número fixo
+    vindo do yfinance como fallback.
+    """
+    try:
+        ws.update(range_name=f'C{idx}', values=[[f'=GoogleFinance(A{idx},"price")']],
+                  value_input_option='USER_ENTERED')
+        time.sleep(2)
+        valor = ws.acell(f'C{idx}').value
+
+        valor_ok = False
+        if valor:
+            try:
+                float(str(valor).replace(',', '.'))
+                valor_ok = True
+            except ValueError:
+                valor_ok = False
+
+        if not valor_ok:
+            info = yf.Ticker(f"{bdr_ticker}.SA").info
+            preco = info.get('currentPrice') or info.get('regularMarketPrice')
+            if preco:
+                ws.update(range_name=f'C{idx}', values=[[round(preco, 2)]])
+                print(f"(Vl.Atu via yfinance: {round(preco, 2)}) ", end="")
+    except Exception as e:
+        print(f"(aviso Vl.Atu: {str(e)[:40]}) ", end="")
+
 def buscar_dados_bdr(bdr_ticker, ticker_original, tentativa=1):
     try:
         dados = {}
@@ -149,7 +178,9 @@ def main(inicio=None, fim=None):
         ticker_original = MAPA_TICKERS[bdr_ticker]
 
         if ticker_original is None:
-            print(f"[{contador:3d}] {bdr_ticker:8s}... SKIP (sem ticker público)")
+            print(f"[{contador:3d}] {bdr_ticker:8s}... ", end=" ", flush=True)
+            garantir_vl_atu(ws, idx, bdr_ticker)
+            print("SKIP (sem ticker público p/ fundamentos)")
             continue
 
         print(f"[{contador:3d}] {bdr_ticker:8s} -> {ticker_original:8s}...", end=" ", flush=True)
@@ -160,10 +191,12 @@ def main(inicio=None, fim=None):
             print("SKIP (erro)")
             continue
 
+        garantir_vl_atu(ws, idx, bdr_ticker)
+
         try:
-            # Colunas: A=BRD, B=Vl.Pg (manual, não mexer), C=Vl.Atu (GOOGLEFINANCE, não mexer),
-            # D=ROE, E=P/L, F=P/VP, G=Proporção (fora de escopo), H=Liquidez, I=Receita,
-            # J=Lucro Líquido, K=12M, L=%Div
+            # Colunas: A=BRD, B=Vl.Pg (manual, não mexer), C=Vl.Atu (GOOGLEFINANCE, com
+            # fallback via yfinance se der erro), D=ROE, E=P/L, F=P/VP, G=Proporção
+            # (fora de escopo), H=Liquidez, I=Receita, J=Lucro Líquido, K=12M, L=%Div
             ws.update(range_name=f'D{idx}:F{idx}', values=[[
                 round(dados['roe'] * 100, 2) if dados['roe'] else '',
                 round(dados['pl'], 2) if dados['pl'] else '',
