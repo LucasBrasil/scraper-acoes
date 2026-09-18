@@ -82,11 +82,13 @@ def garantir_vl_atu(ws, idx, ticker):
     except Exception as e:
         print(f"(aviso Vl.Atu: {str(e)[:40]}) ", end="")
 
-def buscar_status_invest(ticker, tentativa=1):
+def buscar_status_invest(ticker, tentativa=1, debug=False):
     try:
         url = f"https://statusinvest.com.br/etfs/{ticker.lower()}"
         r = requests.get(url, headers=HEADERS_BR, timeout=15)
         if r.status_code != 200:
+            if debug:
+                print(f"\n   [debug] {ticker}: HTTP {r.status_code}, tamanho={len(r.text)}")
             return None
         html = r.text
 
@@ -103,6 +105,12 @@ def buscar_status_invest(ticker, tentativa=1):
             html, re.DOTALL
         )
 
+        if debug and not (m_taxa and m_patrim and m_liquidez):
+            bloqueado = any(s in html for s in ['Just a moment', 'cf-browser-verification', 'captcha', 'Access denied', 'Cloudflare'])
+            print(f"\n   [debug] {ticker}: HTTP 200, tamanho={len(html)}, "
+                  f"m_taxa={bool(m_taxa)} m_patrim={bool(m_patrim)} m_liquidez={bool(m_liquidez)}, "
+                  f"sinais_bloqueio={bloqueado}")
+
         return {
             'taxa_adm': num_br(m_taxa.group(1)) if m_taxa else None,
             'patrim_liquido': num_br(m_patrim.group(1)) if m_patrim else None,
@@ -111,7 +119,9 @@ def buscar_status_invest(ticker, tentativa=1):
     except requests.exceptions.Timeout:
         if tentativa < 3:
             time.sleep(5)
-            return buscar_status_invest(ticker, tentativa + 1)
+            return buscar_status_invest(ticker, tentativa + 1, debug)
+        if debug:
+            print(f"\n   [debug] {ticker}: Timeout após {tentativa} tentativas")
         return None
     except Exception as e:
         print(f"   ⚠️  Erro Status Invest: {str(e)[:60]}")
@@ -204,7 +214,7 @@ def main(inicio=None, fim=None):
 
         print(f"[{contador:3d}] {ticker:8s}...", end=" ", flush=True)
 
-        si = buscar_status_invest(ticker)
+        si = buscar_status_invest(ticker, debug=True)
         retornos = buscar_retornos_e_dy(ticker)
         garantir_vl_atu(ws, idx, ticker)
 
