@@ -2,7 +2,7 @@
 """
 Scraper de ETFs.
 Fontes:
-- Status Invest: Taxa de administração, Patrimônio líquido, Liquidez média diária
+- etfsbrasil.com.br: Taxa de administração, Patrimônio líquido, Liquidez média diária
 - yfinance: Retornos (12M, 3A, 5A) calculados via histórico de preços
   (total return, incluindo dividendos) e DY (dividend yield)
 
@@ -26,18 +26,7 @@ SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 HEADERS_BR = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
-    "Referer": "https://www.google.com/",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "cross-site",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1",
-    "sec-ch-ua": '"Chromium";v="120", "Not(A:Brand";v="24", "Google Chrome";v="120"',
-    "sec-ch-ua-mobile": "?0",
-    "sec-ch-ua-platform": '"Windows"',
+    "Accept-Language": "pt-BR,pt;q=0.9",
 }
 
 def conectar():
@@ -93,9 +82,13 @@ def garantir_vl_atu(ws, idx, ticker):
     except Exception as e:
         print(f"(aviso Vl.Atu: {str(e)[:40]}) ", end="")
 
-def buscar_status_invest(ticker, tentativa=1, debug=False):
+def buscar_etfsbrasil(ticker, tentativa=1, debug=False):
+    """
+    Fonte: etfsbrasil.com.br. Trocado do Status Invest, que bloqueia (HTTP 403)
+    requisições vindas de IPs de datacenter como o do GitHub Actions runner.
+    """
     try:
-        url = f"https://statusinvest.com.br/etfs/{ticker.lower()}"
+        url = f"https://www.etfsbrasil.com.br/etfs/{ticker.lower()}"
         r = requests.get(url, headers=HEADERS_BR, timeout=15)
         if r.status_code != 200:
             if debug:
@@ -103,39 +96,51 @@ def buscar_status_invest(ticker, tentativa=1, debug=False):
             return None
         html = r.text
 
-        m_taxa = re.search(
-            r'(?:adm\.|administração)</span>\s*</span>\s*<strong class="value">([\d,]+)\s*%',
-            html
-        )
-        m_patrim = re.search(
-            r'Patrimônio líquido</span>.*?<strong class="value">([\d.,]+)</strong>',
-            html, re.DOTALL
-        )
-        m_liquidez = re.search(
-            r'Liquidez média diária</span>.*?<strong class="value">([\d.,]+)</strong>',
-            html, re.DOTALL
-        )
+        def campo(label):
+            m = re.search(
+                re.escape(label) + r'</div><div class="[^"]*__value">([^<]+)</div>',
+                html
+            )
+            return m.group(1) if m else None
 
-        if debug and not (m_taxa and m_patrim and m_liquidez):
-            bloqueado = any(s in html for s in ['Just a moment', 'cf-browser-verification', 'captcha', 'Access denied', 'Cloudflare'])
+        def campo_com_comentario(label):
+            # Alguns valores têm comentários HTML <!-- --> intercalados
+            # (ex: "R$ 66,84<!-- --> <span...") antes do </div> de fechamento
+            m = re.search(
+                re.escape(label) + r'</div><div class="[^"]*__value">([^<]+)',
+                html
+            )
+            return m.group(1) if m else None
+
+        txt_patrim = campo('Patrimônio líquido (R$ MM)')
+        txt_vol = campo_com_comentario('Negociação diária média')
+        txt_taxa = campo('Taxa de administração total')
+
+        if debug and not (txt_patrim and txt_vol and txt_taxa):
+            bloqueado = any(s in html for s in ['Just a moment', 'cf-browser-verification', 'captcha', 'Access denied'])
             print(f"\n   [debug] {ticker}: HTTP 200, tamanho={len(html)}, "
-                  f"m_taxa={bool(m_taxa)} m_patrim={bool(m_patrim)} m_liquidez={bool(m_liquidez)}, "
+                  f"patrim={bool(txt_patrim)} vol={bool(txt_vol)} taxa={bool(txt_taxa)}, "
                   f"sinais_bloqueio={bloqueado}")
 
+        # Patrimônio e volume vêm em R$ milhões ("7.533,90" -> 7533900000 * ...)
+        patrim = num_br(txt_patrim) if txt_patrim else None
+        vol = num_br(txt_vol.replace('R$', '').strip()) if txt_vol else None
+        taxa = num_br(txt_taxa) if txt_taxa else None
+
         return {
-            'taxa_adm': num_br(m_taxa.group(1)) if m_taxa else None,
-            'patrim_liquido': num_br(m_patrim.group(1)) if m_patrim else None,
-            'vol_diario': num_br(m_liquidez.group(1)) if m_liquidez else None,
+            'taxa_adm': taxa,
+            'patrim_liquido': patrim * 1_000_000 if patrim is not None else None,
+            'vol_diario': vol * 1_000_000 if vol is not None else None,
         }
     except requests.exceptions.Timeout:
         if tentativa < 3:
             time.sleep(5)
-            return buscar_status_invest(ticker, tentativa + 1, debug)
+            return buscar_etfsbrasil(ticker, tentativa + 1, debug)
         if debug:
             print(f"\n   [debug] {ticker}: Timeout após {tentativa} tentativas")
         return None
     except Exception as e:
-        print(f"   ⚠️  Erro Status Invest: {str(e)[:60]}")
+        print(f"   ⚠️  Erro etfsbrasil: {str(e)[:60]}")
         return None
 
 def buscar_retorno_periodo(hist, anos):
@@ -225,7 +230,7 @@ def main(inicio=None, fim=None):
 
         print(f"[{contador:3d}] {ticker:8s}...", end=" ", flush=True)
 
-        si = buscar_status_invest(ticker, debug=True)
+        si = buscar_etfsbrasil(ticker, debug=True)
         retornos = buscar_retornos_e_dy(ticker)
         garantir_vl_atu(ws, idx, ticker)
 
