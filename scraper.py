@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import re
+from datetime import datetime, date
 
 WORKSHEET_NAME = "Dados"
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -82,6 +83,35 @@ def buscar(ticker, tentativa=1):
             return buscar(ticker, tentativa + 1)
         return None
 
+def buscar_data_com(ticker, tentativa=1):
+    """Próxima data-com (>= hoje); se não houver futura, a mais recente. '' se sem proventos."""
+    try:
+        url = f"https://fundamentus.com.br/proventos.php?papel={ticker}&tipo=2"
+        h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
+        r = requests.get(url, headers=h, timeout=45)
+        if r.status_code != 200:
+            return ''
+        datas = re.findall(r'<tr[^>]*>\s*<td>(\d{2}/\d{2}/\d{4})</td>', r.text)
+        if not datas:
+            return ''
+        parsed = [datetime.strptime(d, '%d/%m/%Y').date() for d in datas]
+        futuras = [d for d in parsed if d >= date.today()]
+        escolhida = min(futuras) if futuras else max(parsed)
+        return escolhida.strftime('%d/%m/%Y')
+    except requests.exceptions.Timeout:
+        if tentativa < 3:
+            time.sleep(5)
+            return buscar_data_com(ticker, tentativa + 1)
+        return ''
+    except Exception:
+        return ''
+
+def data_para_serial(txt):
+    """'dd/mm/aaaa' -> número serial do Sheets (data real, independe de locale/formato da célula)."""
+    if not txt:
+        return ''
+    return (datetime.strptime(txt, '%d/%m/%Y').date() - date(1899, 12, 30)).days
+
 def main(inicio=None, fim=None):
     ws = conectar()
     if not ws:
@@ -114,6 +144,7 @@ def main(inicio=None, fim=None):
             time.sleep(5)
             continue
         if dados and (dados['preco'] or dados['roe'] or dados['marg']):
+            dados['data_com'] = buscar_data_com(ticker)
             tickers_dados.append((idx, ticker, dados))
             print("OK")
         else:
@@ -155,6 +186,7 @@ def main(inicio=None, fim=None):
                     round(dados['pvp'], 2) if dados['pvp'] else ''
                 ]])
                 ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else '']])
+            ws.update(range_name=f'W{idx}', values=[[data_para_serial(dados.get('data_com', ''))]], value_input_option='USER_ENTERED')
             print("OK")
             ok_count += 1
         except Exception as e:
