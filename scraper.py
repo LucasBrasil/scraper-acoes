@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import re
+import base64
 from datetime import datetime, date
 
 WORKSHEET_NAME = "Dados"
@@ -90,7 +91,7 @@ def buscar_data_com(ticker, tentativa=1):
         h = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0"}
         r = requests.get(url, headers=h, timeout=45)
         if r.status_code != 200:
-            return ''
+            return None
         datas = re.findall(r'<tr[^>]*>\s*<td>(\d{2}/\d{2}/\d{4})</td>', r.text)
         if not datas:
             return ''
@@ -102,9 +103,59 @@ def buscar_data_com(ticker, tentativa=1):
         if tentativa < 3:
             time.sleep(5)
             return buscar_data_com(ticker, tentativa + 1)
-        return ''
+        return None
     except Exception:
-        return ''
+        return None
+
+B3_SUPLEMENTO = "https://sistemaswebb3-listados.b3.com.br/listedCompaniesProxy/CompanyCall/GetListedSupplementCompany/"
+ROTULOS_SPLIT = {'DESDOBRAMENTO', 'GRUPAMENTO'}
+ROTULOS_BONUS = {'BONIFICACAO', 'REST CAP DIN', 'REST CAP ACOES'}
+_cache_b3 = {}
+
+def buscar_eventos_b3(ticker, tentativa=1):
+    """
+    Data-com (lastDatePrior, API oficial da B3) do PRÓXIMO evento de split e de bonificação.
+    Retorna (data_split, data_bonus) em dd/mm/aaaa, '' quando não há evento futuro anunciado,
+    ou None se a consulta falhou (para não apagar o valor já gravado na planilha).
+    """
+    emissor = ticker[:4]
+    if emissor in _cache_b3:
+        return _cache_b3[emissor]
+    try:
+        payload = base64.b64encode(json.dumps({"language": "pt-br", "issuingCompany": emissor}).encode()).decode()
+        h = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0"}
+        r = requests.get(B3_SUPLEMENTO + payload, headers=h, timeout=30)
+        if r.status_code != 200:
+            return None
+        dados = r.json()
+        if not dados:
+            return None
+        emp = dados[0]
+        eventos = (emp.get('stockDividends') or []) + (emp.get('cashDividends') or [])
+        hoje = date.today()
+        proximas = {'split': [], 'bonus': []}
+        for ev in eventos:
+            try:
+                d = datetime.strptime(ev.get('lastDatePrior', ''), '%d/%m/%Y').date()
+            except ValueError:
+                continue
+            if d < hoje:
+                continue
+            rot = (ev.get('label') or '').strip().upper()
+            if rot in ROTULOS_SPLIT:
+                proximas['split'].append(d)
+            elif rot in ROTULOS_BONUS:
+                proximas['bonus'].append(d)
+        res = tuple(min(proximas[k]).strftime('%d/%m/%Y') if proximas[k] else '' for k in ('split', 'bonus'))
+        _cache_b3[emissor] = res
+        return res
+    except requests.exceptions.Timeout:
+        if tentativa < 3:
+            time.sleep(5)
+            return buscar_eventos_b3(ticker, tentativa + 1)
+        return None
+    except Exception:
+        return None
 
 def data_para_serial(txt):
     """'dd/mm/aaaa' -> número serial do Sheets (data real, independe de locale/formato da célula)."""
@@ -145,6 +196,7 @@ def main(inicio=None, fim=None):
             continue
         if dados and (dados['preco'] or dados['roe'] or dados['marg']):
             dados['data_com'] = buscar_data_com(ticker)
+            dados['eventos'] = buscar_eventos_b3(ticker)
             tickers_dados.append((idx, ticker, dados))
             print("OK")
         else:
@@ -186,7 +238,16 @@ def main(inicio=None, fim=None):
                     round(dados['pvp'], 2) if dados['pvp'] else ''
                 ]])
                 ws.update(range_name=f'L{idx}', values=[[round(dados['ativo'], 0) if dados['ativo'] else '']])
-            ws.update(range_name=f'W{idx}', values=[[data_para_serial(dados.get('data_com', ''))]], value_input_option='USER_ENTERED')
+            atual = linhas[idx - 1] if idx - 1 < len(linhas) else []
+            def col(n):
+                return atual[n] if len(atual) > n else ''
+            dc = dados.get('data_com')
+            ev = dados.get('eventos')
+            ws.update(range_name=f'W{idx}:Y{idx}', values=[[
+                data_para_serial(dc) if dc is not None else col(22),
+                data_para_serial(ev[0]) if ev is not None else col(23),
+                data_para_serial(ev[1]) if ev is not None else col(24),
+            ]], value_input_option='USER_ENTERED')
             print("OK")
             ok_count += 1
         except Exception as e:
