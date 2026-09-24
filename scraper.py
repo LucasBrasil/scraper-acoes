@@ -114,8 +114,8 @@ _cache_b3 = {}
 
 def buscar_eventos_b3(ticker, tentativa=1):
     """
-    Data-com (lastDatePrior, API oficial da B3) do PRÓXIMO evento de split e de bonificação.
-    Retorna (data_split, data_bonus) em dd/mm/aaaa, '' quando não há evento futuro anunciado,
+    Data-com (lastDatePrior, API oficial da B3) de split e de bonificação: a próxima futura;
+    se não houver, a mais recente já passada. Retorna (data_split, data_bonus) em dd/mm/aaaa, '' se nunca houve evento,
     ou None se a consulta falhou (para não apagar o valor já gravado na planilha).
     """
     emissor = ticker[:4]
@@ -139,14 +139,17 @@ def buscar_eventos_b3(ticker, tentativa=1):
                 d = datetime.strptime(ev.get('lastDatePrior', ''), '%d/%m/%Y').date()
             except ValueError:
                 continue
-            if d < hoje:
-                continue
             rot = (ev.get('label') or '').strip().upper()
             if rot in ROTULOS_SPLIT:
                 proximas['split'].append(d)
             elif rot in ROTULOS_BONUS:
                 proximas['bonus'].append(d)
-        res = tuple(min(proximas[k]).strftime('%d/%m/%Y') if proximas[k] else '' for k in ('split', 'bonus'))
+        def escolher(datas):
+            if not datas:
+                return ''
+            futuras = [d for d in datas if d >= hoje]
+            return (min(futuras) if futuras else max(datas)).strftime('%d/%m/%Y')
+        res = (escolher(proximas['split']), escolher(proximas['bonus']))
         _cache_b3[emissor] = res
         return res
     except requests.exceptions.Timeout:
