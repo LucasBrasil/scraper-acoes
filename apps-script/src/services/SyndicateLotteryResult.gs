@@ -17,6 +17,8 @@ class SyndicateLotteryResult {
     this.totalBudget = 0;
     this.alreadyGenerated = false;
     this.error = null;
+    this.lastDrawnNumbers = [];
+    this.hits = 0;
   }
 
   isSuccess() {

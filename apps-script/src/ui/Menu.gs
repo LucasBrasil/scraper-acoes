@@ -240,6 +240,9 @@ function _formatSyndicateLotteryMessage(result) {
   }
 
   const jogosTexto = result.games.map((game, idx) => `  Jogo ${idx + 1}: ${game.join(', ')}`).join('\n');
+  const lastDrawnText = result.lastDrawnNumbers && result.lastDrawnNumbers.length > 0
+    ? `  Números: ${result.lastDrawnNumbers.join(', ')}`
+    : '  (Nenhum resultado disponível)';
 
   return `Bolão gerado com sucesso!
 
@@ -253,6 +256,10 @@ Sincronização:
 Histórico:
   Status da integridade: ${result.integrityStatus}
   Detalhes: ${result.integrityDetails}
+
+Resultado do Último Concurso (Concurso ${result.lastLocalContest}):
+${lastDrawnText}
+  Acertos: ${result.hits} número(s)
 
 Seleção e Distribuição:
   Dezenas selecionadas: ${result.selectedNumbers.join(', ')}

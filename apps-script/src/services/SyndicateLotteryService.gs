@@ -50,6 +50,12 @@ class SyndicateLotteryService {
       result.valuePerParticipant = this.syndicateConfig.valuePerParticipant;
       result.totalBudget = this.syndicateConfig.getBudget();
 
+      if (contests.length > 0) {
+        const lastContest = contests[contests.length - 1];
+        result.lastDrawnNumbers = lastContest.drawnNumbers ? lastContest.drawnNumbers.slice() : [];
+        result.hits = this._calculateHits(selectedNumbers, result.lastDrawnNumbers);
+      }
+
       return result;
     } catch (error) {
       result.error = error.message;
@@ -236,5 +242,13 @@ class SyndicateLotteryService {
       map[c.getDefinition().name] = null;
     });
     return map;
+  }
+
+  _calculateHits(selectedNumbers, drawnNumbers) {
+    if (!drawnNumbers || drawnNumbers.length === 0) {
+      return 0;
+    }
+    const drawnSet = new Set(drawnNumbers);
+    return selectedNumbers.filter(num => drawnSet.has(num)).length;
   }
 }

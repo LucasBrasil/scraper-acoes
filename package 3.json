@@ -1,0 +1,12 @@
+{
+  "name": "ms-analytics",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runner local dos testes do MS Analytics. Fica fora do rootDir do clasp e nao e enviado ao Google Apps Script.",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
