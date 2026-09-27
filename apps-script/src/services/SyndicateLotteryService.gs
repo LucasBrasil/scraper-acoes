@@ -248,7 +248,7 @@ class SyndicateLotteryService {
     if (!drawnNumbers || drawnNumbers.length === 0) {
       return 0;
     }
-    const drawnSet = new Set(drawnNumbers);
-    return selectedNumbers.filter(num => drawnSet.has(num)).length;
+    const drawnSet = new Set(drawnNumbers.map(num => Number(num)));
+    return selectedNumbers.filter(num => drawnSet.has(Number(num))).length;
   }
 }
