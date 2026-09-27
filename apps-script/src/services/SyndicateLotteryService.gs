@@ -54,6 +54,7 @@ class SyndicateLotteryService {
         const lastContest = contests[contests.length - 1];
         result.lastDrawnNumbers = lastContest.drawnNumbers ? lastContest.drawnNumbers.slice() : [];
         result.hits = this._calculateHits(selectedNumbers, result.lastDrawnNumbers);
+        Logger.log(`[generate] Last contest: ${lastContest.number}, Drawn: [${result.lastDrawnNumbers}], Selected: [${selectedNumbers}], Hits: ${result.hits}`);
       }
 
       return result;
