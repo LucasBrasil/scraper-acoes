@@ -50,11 +50,16 @@ class SyndicateLotteryService {
       result.valuePerParticipant = this.syndicateConfig.valuePerParticipant;
       result.totalBudget = this.syndicateConfig.getBudget();
 
-      if (contests.length > 0) {
-        const lastContest = contests[contests.length - 1];
-        result.lastDrawnNumbers = lastContest.drawnNumbers ? lastContest.drawnNumbers.slice() : [];
-        result.hits = this._calculateHits(selectedNumbers, result.lastDrawnNumbers);
-        Logger.log(`[generate] Last contest: ${lastContest.number}, Drawn: [${result.lastDrawnNumbers}], Selected: [${selectedNumbers}], Hits: ${result.hits}`);
+      if (result.lastLocalContest > 0) {
+        const gamesRepository = new SyndicateGamesSheetRepository();
+        const games = gamesRepository.getGamesByContest(result.lastLocalContest);
+
+        if (games.length > 0) {
+          const lastGame = games[0];
+          result.lastDrawnNumbers = lastGame.drawnNumbers ? lastGame.drawnNumbers.slice() : [];
+          result.hits = this._calculateHits(selectedNumbers, result.lastDrawnNumbers);
+          Logger.log(`[generate] Last contest from games sheet: ${result.lastLocalContest}, Drawn: [${result.lastDrawnNumbers}], Selected: [${selectedNumbers}], Hits: ${result.hits}`);
+        }
       }
 
       return result;
