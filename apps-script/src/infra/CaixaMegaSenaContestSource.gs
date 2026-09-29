@@ -6,7 +6,7 @@ class CaixaMegaSenaContestSource extends IContestSource {
   constructor(httpClient, baseUrl) {
     super();
     this.httpClient = httpClient || new HttpClient();
-    this.baseUrl = baseUrl || 'https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena';
+    this.baseUrl = baseUrl || 'https://loterias.caixa.gov.br/api/megasena';
   }
 
   /**
