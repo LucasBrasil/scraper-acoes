@@ -13,8 +13,18 @@ class HttpClient {
    */
   get(url) {
     let response;
+    const options = {
+      muteHttpExceptions: true,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'pt-BR,pt;q=0.9'
+      },
+      followRedirects: true
+    };
+
     try {
-      response = this.urlFetchApp.fetch(url, { muteHttpExceptions: true });
+      response = this.urlFetchApp.fetch(url, options);
     } catch (error) {
       throw new Error(`HttpClient falhou ao fazer GET ${url}: ${error.message}`);
     }
