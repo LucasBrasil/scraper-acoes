@@ -202,7 +202,11 @@ function generateSyndicateLottery() {
 function _syncHistoryBeforeGeneration() {
   const historyRepository = new HistoryRepository();
   const httpClient = new HttpClient();
-  const contestSource = new CaixaMegaSenaContestSource(httpClient);
+
+  const contestSource = new FallbackContestSource(
+    new CaixaMegaSenaContestSource(httpClient),
+    new SomatematicaMegaSenaContestSource(httpClient)
+  );
 
   const syncService = new HistorySyncService(
     contestSource,
