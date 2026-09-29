@@ -55,11 +55,16 @@ class SomatematicaMegaSenaContestSource extends IContestSource {
         ];
 
         Logger.log(`[SomatematicaMegaSenaContestSource] Concurso ${number}: ${dezenas}`);
-        return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
+
+        if (this._isValidDezenas(dezenas)) {
+          return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
+        } else {
+          Logger.log(`[SomatematicaMegaSenaContestSource] Dezenas inválidas: ${dezenas}`);
+        }
       }
     }
 
-    throw new Error('Não foi possível extrair dados do concurso mais recente do site Só Matemática');
+    throw new Error('Não foi possível extrair dados válidos do site Só Matemática');
   }
 
   /**
@@ -86,10 +91,35 @@ class SomatematicaMegaSenaContestSource extends IContestSource {
           Number(match[6])
         ];
 
-        return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
+        if (this._isValidDezenas(dezenas)) {
+          return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
+        } else {
+          Logger.log(`[SomatematicaMegaSenaContestSource] Dezenas inválidas para concurso ${number}: ${dezenas}`);
+        }
       }
     }
 
-    throw new Error(`Concurso ${number} não encontrado no site Só Matemática`);
+    throw new Error(`Concurso ${number} não encontrado ou com dados inválidos no site Só Matemática`);
+  }
+
+  /**
+   * Valida se as dezenas estão corretas.
+   */
+  _isValidDezenas(dezenas) {
+    if (!Array.isArray(dezenas) || dezenas.length !== 6) {
+      Logger.log(`[SomatematicaMegaSenaContestSource] Tamanho inválido: ${dezenas.length}`);
+      return false;
+    }
+
+    const seen = new Set();
+    for (const num of dezenas) {
+      if (!Number.isInteger(num) || num < 1 || num > 60 || seen.has(num)) {
+        Logger.log(`[SomatematicaMegaSenaContestSource] Número inválido: ${num} (isInt=${Number.isInteger(num)}, range=${num >= 1 && num <= 60}, unique=${!seen.has(num)})`);
+        return false;
+      }
+      seen.add(num);
+    }
+    Logger.log(`[SomatematicaMegaSenaContestSource] Dezenas válidas: ${dezenas}`);
+    return true;
   }
 }
