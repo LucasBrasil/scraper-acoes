@@ -179,7 +179,13 @@ function generateSyndicateLottery() {
   }
 
   try {
-    _syncHistoryBeforeGeneration();
+    try {
+      _syncHistoryBeforeGeneration();
+      Logger.log('Histórico sincronizado com sucesso antes de gerar bolão.');
+    } catch (syncError) {
+      Logger.log(`Aviso: Não foi possível sincronizar o histórico: ${syncError.message}`);
+      SpreadsheetApp.getUi().alert(`Aviso: Não foi possível atualizar o histórico (${syncError.message}). Gerando bolão com dados existentes...`);
+    }
 
     const result = _executeSyndicateLotteryGeneration();
     const message = _formatSyndicateLotteryMessage(result);
