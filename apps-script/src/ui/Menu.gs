@@ -113,7 +113,11 @@ function _executeHistorySync() {
   const configRepository = new ConfigRepository();
   const historyRepository = new HistoryRepository();
   const httpClient = new HttpClient();
-  const contestSource = new CaixaMegaSenaContestSource(httpClient);
+
+  const contestSource = new FallbackContestSource(
+    new CaixaMegaSenaContestSource(httpClient),
+    new SomatematicaMegaSenaContestSource(httpClient)
+  );
 
   const syncService = new HistorySyncService(
     contestSource,
@@ -214,7 +218,12 @@ function _syncHistoryBeforeGeneration() {
 function _executeSyndicateLotteryGeneration() {
   const historyRepository = new HistoryRepository();
   const httpClient = new HttpClient();
-  const contestSource = new CaixaMegaSenaContestSource(httpClient);
+
+  const contestSource = new FallbackContestSource(
+    new CaixaMegaSenaContestSource(httpClient),
+    new SomatematicaMegaSenaContestSource(httpClient)
+  );
+
   const statisticsRepository = new StatisticsRepository();
   const statisticsService = new StatisticsService(historyRepository, new StatisticsEngine(), statisticsRepository);
 
@@ -360,7 +369,11 @@ function updateSyndicateLotteryResults() {
   try {
     const historyRepository = new HistoryRepository();
     const httpClient = new HttpClient();
-    const contestSource = new CaixaMegaSenaContestSource(httpClient);
+
+    const contestSource = new FallbackContestSource(
+      new CaixaMegaSenaContestSource(httpClient),
+      new SomatematicaMegaSenaContestSource(httpClient)
+    );
 
     const syncService = new HistorySyncService(
       contestSource,
