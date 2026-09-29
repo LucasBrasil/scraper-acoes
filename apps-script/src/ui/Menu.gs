@@ -116,6 +116,7 @@ function _executeHistorySync() {
 
   const contestSource = new FallbackContestSource(
     new CaixaMegaSenaContestSource(httpClient),
+    new IntersenaContestSource(httpClient),
     new SomatematicaMegaSenaContestSource(httpClient)
   );
 
@@ -211,6 +212,7 @@ function _syncHistoryBeforeGeneration() {
 
   const contestSource = new FallbackContestSource(
     new CaixaMegaSenaContestSource(httpClient),
+    new IntersenaContestSource(httpClient),
     new SomatematicaMegaSenaContestSource(httpClient)
   );
 
@@ -231,6 +233,7 @@ function _executeSyndicateLotteryGeneration() {
 
   const contestSource = new FallbackContestSource(
     new CaixaMegaSenaContestSource(httpClient),
+    new IntersenaContestSource(httpClient),
     new SomatematicaMegaSenaContestSource(httpClient)
   );
 
