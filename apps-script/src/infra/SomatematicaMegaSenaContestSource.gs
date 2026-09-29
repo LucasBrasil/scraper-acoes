@@ -29,42 +29,29 @@ class SomatematicaMegaSenaContestSource extends IContestSource {
 
   /**
    * Parse HTML para extrair o concurso mais recente.
-   * Tenta múltiplos padrões para ser robusto.
+   * Procura por QUALQUER sequência de 6 números válidos (1-60, únicos).
    */
   _parseLatestFromHtml(html) {
-    Logger.log('[SomatematicaMegaSenaContestSource] Analisando HTML...');
+    Logger.log('[SomatematicaMegaSenaContestSource] Analisando HTML para concurso mais recente...');
 
-    const patterns = [
-      /Concurso[:\s]+(\d+)[^0-9]*(\d+)[^0-9]+(\d+)[^0-9]+(\d+)[^0-9]+(\d+)[^0-9]+(\d+)[^0-9]+(\d+)/i,
-      /concurso\s+(\d{4})[^0-9]*(\d{1,2})[^0-9]+(\d{1,2})[^0-9]+(\d{1,2})[^0-9]+(\d{1,2})[^0-9]+(\d{1,2})[^0-9]+(\d{1,2})/i,
-      /(\d{4})[^0-9]*(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})\s+(\d{1,2})/
-    ];
+    const lines = html.split('\n');
 
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match) {
-        Logger.log(`[SomatematicaMegaSenaContestSource] Padrão encontrado: ${match[0].substring(0, 50)}`);
-        const number = Number(match[1]);
-        const dezenas = [
-          Number(match[2]),
-          Number(match[3]),
-          Number(match[4]),
-          Number(match[5]),
-          Number(match[6]),
-          Number(match[7])
-        ];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-        Logger.log(`[SomatematicaMegaSenaContestSource] Concurso ${number}: ${dezenas}`);
+      const numbers = line.match(/\b([1-9]|[1-5][0-9]|60)\b/g);
+      if (numbers && numbers.length >= 7) {
+        const contestNumber = Number(numbers[0]);
+        const dezenas = numbers.slice(1, 7).map(Number);
 
-        if (this._isValidDezenas(dezenas)) {
-          return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
-        } else {
-          Logger.log(`[SomatematicaMegaSenaContestSource] Dezenas inválidas: ${dezenas}`);
+        if (this._isValidDezenas(dezenas) && contestNumber > 1000 && contestNumber < 9999) {
+          Logger.log(`[SomatematicaMegaSenaContestSource] Concurso ${contestNumber} encontrado: ${dezenas}`);
+          return new ContestDTO(contestNumber, new Date().toISOString().split('T')[0], dezenas);
         }
       }
     }
 
-    throw new Error('Não foi possível extrair dados válidos do site Só Matemática');
+    throw new Error('Não foi possível extrair dados válidos do site Só Matemática - HTML pode ter mudado de formato');
   }
 
   /**
@@ -73,33 +60,30 @@ class SomatematicaMegaSenaContestSource extends IContestSource {
   _parseContestFromHtml(html, number) {
     Logger.log(`[SomatematicaMegaSenaContestSource] Procurando concurso ${number}...`);
 
-    const patterns = [
-      new RegExp(`Concurso[:\\s]+${number}[^0-9]*(\\d+)[^0-9]+(\\d+)[^0-9]+(\\d+)[^0-9]+(\\d+)[^0-9]+(\\d+)[^0-9]+(\\d+)`, 'i'),
-      new RegExp(`${number}[^0-9]*(\\d{1,2})[^0-9]+(\\d{1,2})[^0-9]+(\\d{1,2})[^0-9]+(\\d{1,2})[^0-9]+(\\d{1,2})[^0-9]+(\\d{1,2})`)
-    ];
+    const numberStr = String(number);
+    const lines = html.split('\n');
 
-    for (const pattern of patterns) {
-      const match = html.match(pattern);
-      if (match) {
-        Logger.log(`[SomatematicaMegaSenaContestSource] Concurso ${number} encontrado`);
-        const dezenas = [
-          Number(match[1]),
-          Number(match[2]),
-          Number(match[3]),
-          Number(match[4]),
-          Number(match[5]),
-          Number(match[6])
-        ];
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-        if (this._isValidDezenas(dezenas)) {
-          return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
-        } else {
-          Logger.log(`[SomatematicaMegaSenaContestSource] Dezenas inválidas para concurso ${number}: ${dezenas}`);
+      if (line.includes(numberStr)) {
+        const numbers = line.match(/\b([1-9]|[1-5][0-9]|60)\b/g);
+        if (numbers && numbers.length >= 7) {
+          const foundNumber = Number(numbers[0]);
+
+          if (foundNumber === number) {
+            const dezenas = numbers.slice(1, 7).map(Number);
+
+            if (this._isValidDezenas(dezenas)) {
+              Logger.log(`[SomatematicaMegaSenaContestSource] Concurso ${number} encontrado: ${dezenas}`);
+              return new ContestDTO(number, new Date().toISOString().split('T')[0], dezenas);
+            }
+          }
         }
       }
     }
 
-    throw new Error(`Concurso ${number} não encontrado ou com dados inválidos no site Só Matemática`);
+    throw new Error(`Concurso ${number} não encontrado no site Só Matemática`);
   }
 
   /**
@@ -107,18 +91,17 @@ class SomatematicaMegaSenaContestSource extends IContestSource {
    */
   _isValidDezenas(dezenas) {
     if (!Array.isArray(dezenas) || dezenas.length !== 6) {
-      Logger.log(`[SomatematicaMegaSenaContestSource] Tamanho inválido: ${dezenas.length}`);
       return false;
     }
 
     const seen = new Set();
     for (const num of dezenas) {
       if (!Number.isInteger(num) || num < 1 || num > 60 || seen.has(num)) {
-        Logger.log(`[SomatematicaMegaSenaContestSource] Número inválido: ${num} (isInt=${Number.isInteger(num)}, range=${num >= 1 && num <= 60}, unique=${!seen.has(num)})`);
         return false;
       }
       seen.add(num);
     }
+
     Logger.log(`[SomatematicaMegaSenaContestSource] Dezenas válidas: ${dezenas}`);
     return true;
   }
