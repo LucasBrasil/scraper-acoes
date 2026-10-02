@@ -5,6 +5,7 @@ function onOpen() {
     .addItem('▶ Atualizar Tudo', 'updateAll')
     .addItem('Validar Histórico', 'validateHistory')
     .addItem('Atualizar Histórico', 'updateHistorySync')
+    .addItem('Inserir Resultado Manualmente', 'insertContestResultManually')
     .addItem('Atualizar Estatísticas', 'updateStatistics')
     .addItem('Atualizar Score', 'updateScores')
     .addItem('Atualizar Ranking', 'updateRanking')
@@ -408,5 +409,72 @@ function updateSyndicateLotteryResults() {
     throw error;
   } finally {
     lock.releaseLock();
+  }
+}
+
+/** Permite inserir resultado de concurso manualmente. */
+function insertContestResultManually() {
+  const ui = SpreadsheetApp.getUi();
+  const prompt = ui.prompt(
+    'Inserir Resultado do Concurso',
+    'Digite o número do concurso e os 6 números sorteados.\n\nExemplo: 3065 5 10 15 20 30 45',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (prompt.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  const input = prompt.getResponseText().trim();
+  const parts = input.split(/\s+/).map(s => s.trim()).filter(s => s);
+
+  if (parts.length !== 7) {
+    ui.alert('Erro: Digite o número do concurso + 6 números.\n\nExemplo: 3065 5 10 15 20 30 45');
+    return;
+  }
+
+  try {
+    const contestNumber = Number(parts[0]);
+    const drawnNumbers = parts.slice(1).map(n => Number(n));
+
+    if (!Number.isInteger(contestNumber) || contestNumber < 1000 || contestNumber > 9999) {
+      throw new Error('Número do concurso deve ser entre 1000 e 9999');
+    }
+
+    const seen = new Set();
+    for (const num of drawnNumbers) {
+      if (!Number.isInteger(num) || num < 1 || num > 60 || seen.has(num)) {
+        throw new Error('Números devem ser inteiros, únicos e entre 1 e 60');
+      }
+      seen.add(num);
+    }
+
+    Logger.log(`[insertContestResultManually] Inserindo resultado: concurso ${contestNumber}, números ${drawnNumbers}`);
+
+    const historyRepository = new HistoryRepository();
+    const contests = historyRepository.getAll();
+    
+    const existing = contests.find(c => c.number === contestNumber);
+    if (existing) {
+      ui.alert(`Concurso ${contestNumber} já existe no histórico.`);
+      return;
+    }
+
+    const newContest = new Contest(
+      contestNumber,
+      new Date().toISOString().split('T')[0],
+      drawnNumbers
+    );
+
+    historyRepository.insert(newContest);
+    
+    const message = `Resultado inserido com sucesso!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}`;
+    ui.alert(message);
+    Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} inserido com sucesso`);
+
+  } catch (error) {
+    ui.alert(`Erro ao inserir resultado: ${error.message}`);
+    Logger.log(`[insertContestResultManually] ERRO: ${error.message}`);
+    throw error;
   }
 }
