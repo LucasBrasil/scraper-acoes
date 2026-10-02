@@ -453,7 +453,7 @@ function insertContestResultManually() {
 
     const historyRepository = new HistoryRepository();
     const contests = historyRepository.getAll();
-    
+
     const existing = contests.find(c => c.number === contestNumber);
     if (existing) {
       ui.alert(`Concurso ${contestNumber} já existe no histórico.`);
@@ -467,10 +467,48 @@ function insertContestResultManually() {
     );
 
     historyRepository.insert(newContest);
-    
-    const message = `Resultado inserido com sucesso!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}`;
-    ui.alert(message);
-    Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} inserido com sucesso`);
+    Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} inserido no histórico`);
+
+    // Atualizar os resultados nos jogos do bolão
+    try {
+      const gamesRepository = new SyndicateGamesSheetRepository();
+      const gamesService = new SyndicateGamesSheetService(gamesRepository, historyRepository);
+      const updateResult = gamesService.updateResults();
+
+      Logger.log(`[insertContestResultManually] Jogos atualizados: ${updateResult.updatedLines} linhas`);
+
+      // Calcular acertos do último jogo
+      const games = gamesRepository.getGamesByContest(contestNumber);
+      let hits = 0;
+
+      if (games.length > 0) {
+        const selectedNumbers = gamesRepository.getGamesByContest(contestNumber)[0];
+        const drawnSet = new Set(drawnNumbers);
+
+        // Ler a planilha para pegar os números selecionados
+        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Jogos Bolão');
+        if (sheet && games.length > 0) {
+          const row = games[0].rowIndex;
+          const values = sheet.getRange(row, 1, 1, 60).getValues()[0];
+          const selectedSet = new Set(values.map(v => Number(v)).filter(v => !isNaN(v)));
+
+          for (const num of selectedSet) {
+            if (drawnSet.has(num)) {
+              hits++;
+            }
+          }
+        }
+      }
+
+      const message = `Resultado inserido e jogos atualizados!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}\nAcertos: ${hits} número(s)`;
+      ui.alert(message);
+      Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} processado. Acertos: ${hits}`);
+
+    } catch (updateError) {
+      Logger.log(`[insertContestResultManually] Aviso: Resultado inserido mas não foi possível atualizar jogos: ${updateError.message}`);
+      const message = `Resultado inserido com sucesso!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}\n\nAviso: Não foi possível atualizar os jogos automaticamente.`;
+      ui.alert(message);
+    }
 
   } catch (error) {
     ui.alert(`Erro ao inserir resultado: ${error.message}`);
