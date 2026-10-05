@@ -428,14 +428,17 @@ function insertContestResultManually() {
   const input = prompt.getResponseText().trim();
   const parts = input.split(/\s+/).map(s => s.trim()).filter(s => s);
 
-  if (parts.length !== 7) {
-    ui.alert('Erro: Digite o número do concurso + 6 números.\n\nExemplo: 3065 5 10 15 20 30 45');
+  if (parts.length !== 7 && parts.length !== 8) {
+    ui.alert('Erro: Digite o número do concurso + 6 números.\n\nExemplos:\n3065 5 10 15 20 30 45\nOU\n3065 03/10/2026 5 10 15 20 30 45');
     return;
   }
 
   try {
     const contestNumber = Number(parts[0]);
-    const drawnNumbers = parts.slice(1).map(n => Number(n));
+    // Se tem 8 partes, segunda é a data, números começam na terceira
+    // Se tem 7 partes, números começam na segunda
+    const numberStartIndex = parts.length === 8 ? 2 : 1;
+    const drawnNumbers = parts.slice(numberStartIndex).map(n => Number(n));
 
     if (!Number.isInteger(contestNumber) || contestNumber < 1000 || contestNumber > 9999) {
       throw new Error('Número do concurso deve ser entre 1000 e 9999');
