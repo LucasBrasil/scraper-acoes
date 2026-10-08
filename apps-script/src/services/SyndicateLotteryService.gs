@@ -57,7 +57,7 @@ class SyndicateLotteryService {
         if (games.length > 0) {
           const lastGame = games[0];
           result.lastDrawnNumbers = lastGame.drawnNumbers ? lastGame.drawnNumbers.slice() : [];
-          result.hits = this._calculateHits(selectedNumbers, result.lastDrawnNumbers);
+          result.hits = this._calculateHits(lastGame.selectedNumbers, result.lastDrawnNumbers);
           Logger.log(`[generate] Last contest from games sheet: ${result.lastLocalContest}, Drawn: [${result.lastDrawnNumbers}], Selected: [${selectedNumbers}], Hits: ${result.hits}`);
         }
       }

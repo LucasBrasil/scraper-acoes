@@ -66,7 +66,8 @@ class SyndicateGamesSheetRepository {
           rowIndex: i + 1,
           contestNumber: row[contestColIndex - 1],
           date: row[dateColIndex - 1],
-          drawnNumbers: this._extractDrawnNumbers(row)
+          drawnNumbers: this._extractDrawnNumbers(row),
+          selectedNumbers: this._extractSelectedNumbers(row)
         });
       }
     }
@@ -162,6 +163,16 @@ class SyndicateGamesSheetRepository {
     }
 
     sheet.getRange(rowNumber, 1, 1, 60).setBackgrounds([backgrounds]);
+  }
+
+  _extractSelectedNumbers(row) {
+    const selected = [];
+    for (let i = 0; i < 60; i++) {
+      if (row[i] !== '' && row[i] !== null && row[i] !== undefined) {
+        selected.push(i + 1);
+      }
+    }
+    return selected;
   }
 
   _extractDrawnNumbers(row) {
