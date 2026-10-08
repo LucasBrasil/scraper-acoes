@@ -469,7 +469,7 @@ function insertContestResultManually() {
       drawnNumbers
     );
 
-    historyRepository.insert(newContest);
+    historyRepository.save(newContest);
     Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} inserido no histórico`);
 
     // Atualizar os resultados nos jogos do bolão
@@ -480,33 +480,18 @@ function insertContestResultManually() {
 
       Logger.log(`[insertContestResultManually] Jogos atualizados: ${updateResult.updatedLines} linhas`);
 
-      // Calcular acertos do último jogo gerado
-      let hits = 0;
       let hitsMessage = '';
-
-      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Jogos Bolão');
-      if (sheet) {
-        const data = sheet.getDataRange().getValues();
-        if (data.length > 0) {
-          const lastRow = data[data.length - 1];
-          if (lastRow && lastRow.length > 0) {
-            // Pegar números selecionados das 60 primeiras colunas (A:BH)
-            const selectedNumbers = lastRow.slice(0, 60)
-              .map(v => Number(v))
-              .filter(v => !isNaN(v) && v > 0);
-
-            const drawnSet = new Set(drawnNumbers);
-
-            for (const num of selectedNumbers) {
-              if (drawnSet.has(num)) {
-                hits++;
-              }
-            }
-
-            hitsMessage = `\nAcertos: ${hits} número(s)`;
-            Logger.log(`[insertContestResultManually] Último jogo: ${selectedNumbers}, Acertos: ${hits}`);
-          }
-        }
+      const lastGame = gamesRepository.getGamesByContest(contestNumber).pop();
+      if (lastGame) {
+        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Jogos Bolão');
+        const row = sheet.getRange(lastGame.rowIndex, 1, 1, 60).getValues()[0];
+        const selectedNumbers = row
+          .map((value, index) => (value !== '' ? index + 1 : null))
+          .filter(num => num !== null);
+        const drawnSet = new Set(drawnNumbers);
+        const hits = selectedNumbers.filter(num => drawnSet.has(num)).length;
+        hitsMessage = `\nAcertos: ${hits} número(s)`;
+        Logger.log(`[insertContestResultManually] Último jogo: ${selectedNumbers}, Acertos: ${hits}`);
       }
 
       const message = `Resultado inserido e jogos atualizados!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}${hitsMessage}`;
