@@ -3,9 +3,6 @@ class SyndicateLotteryResult {
   constructor() {
     this.lastLocalContest = 0;
     this.lastRemoteContest = 0;
-    this.contestsInserted = 0;
-    this.contestsAlreadyPresent = 0;
-    this.syncConflicts = 0;
     this.integrityStatus = '';
     this.integrityDetails = '';
     this.selectedNumbers = [];
@@ -39,8 +36,7 @@ class SyndicateLotteryResult {
     }
 
     return `Bolão gerado com sucesso:\n` +
-           `  Sincronização: ${this.contestsInserted} novos, ${this.contestsAlreadyPresent} existentes\n` +
-           `  Histórico: ${this.lastLocalContest} (local) -> ${this.lastRemoteContest} (remoto)\n` +
+           `  Histórico: ${this.lastLocalContest}\n` +
            `  Integridade: ${this.integrityStatus} (${this.integrityDetails})\n` +
            `  Participantes: ${this.participants} × R$ ${this.valuePerParticipant.toFixed(2)}\n` +
            `  Orçamento: R$ ${this.totalBudget.toFixed(2)}\n` +
@@ -52,12 +48,6 @@ class SyndicateLotteryResult {
     const log = [];
     log.push('=== AUDITORIA DE GERAÇÃO DO BOLÃO ===');
     log.push(`Último concurso local: ${this.lastLocalContest}`);
-    log.push(`Último concurso remoto: ${this.lastRemoteContest}`);
-    log.push(`Concursos inseridos: ${this.contestsInserted}`);
-    log.push(`Concursos já presentes: ${this.contestsAlreadyPresent}`);
-    if (this.syncConflicts > 0) {
-      log.push(`⚠️  Conflitos detectados: ${this.syncConflicts}`);
-    }
     log.push(`Status da integridade: ${this.integrityStatus}`);
     log.push(`Detalhes: ${this.integrityDetails}`);
     if (this.error) {

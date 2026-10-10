@@ -1,19 +1,17 @@
-/** Serviço de geração de bolão com sincronização automática e nova estratégia de score. */
+/** Serviço de geração de bolão com base no histórico local e nova estratégia de score. */
 class SyndicateLotteryService {
-  constructor(historyRepository, contestSource, statisticsService, syndicateConfig) {
+  constructor(historyRepository, statisticsService, syndicateConfig) {
     this.historyRepository = historyRepository;
-    this.contestSource = contestSource;
     this.statisticsService = statisticsService;
     this.syndicateConfig = syndicateConfig;
   }
 
   /**
    * Executa a geração completa do bolão:
-   * 1. Sincroniza histórico com CAIXA
-   * 2. Valida integridade
-   * 3. Calcula estatísticas
-   * 4. Seleciona 7 dezenas
-   * 5. Distribui jogos
+   * 1. Valida integridade do histórico local
+   * 2. Calcula estatísticas
+   * 3. Seleciona 7 dezenas
+   * 4. Distribui jogos
    *
    * @returns {SyndicateLotteryResult}
    */
@@ -22,12 +20,7 @@ class SyndicateLotteryService {
 
     try {
       result.lastLocalContest = this.historyRepository.getLatestContestNumber();
-
-      const syncResult = this._syncHistory();
-      result.lastRemoteContest = syncResult.lastRemote;
-      result.contestsInserted = syncResult.inserted;
-      result.contestsAlreadyPresent = syncResult.alreadyPresent;
-      result.syncConflicts = syncResult.conflicts;
+      result.lastRemoteContest = result.lastLocalContest;
 
       const integrityResult = this._validateHistory();
       result.integrityStatus = integrityResult.status;
@@ -66,41 +59,6 @@ class SyndicateLotteryService {
     } catch (error) {
       result.error = error.message;
       return result;
-    }
-  }
-
-  _syncHistory() {
-    const currentLatest = this.historyRepository.getLatestContestNumber();
-
-    try {
-      const syncService = new HistorySyncService(
-        this.contestSource,
-        this.historyRepository,
-        currentLatest
-      );
-      const syncResult = syncService.sync();
-
-      let lastRemote = currentLatest;
-      if (syncResult.toInsert && syncResult.toInsert.length > 0) {
-        lastRemote = Math.max.apply(null, syncResult.toInsert.map(d => d.number));
-        if (currentLatest > lastRemote) {
-          lastRemote = currentLatest;
-        }
-      }
-
-      return {
-        inserted: syncResult.toInsert ? syncResult.toInsert.length : 0,
-        alreadyPresent: syncResult.alreadyPresent ? syncResult.alreadyPresent.length : 0,
-        conflicts: syncResult.conflicts ? syncResult.conflicts.length : 0,
-        lastRemote: lastRemote
-      };
-    } catch (e) {
-      return {
-        inserted: 0,
-        alreadyPresent: 0,
-        conflicts: 0,
-        lastRemote: currentLatest
-      };
     }
   }
 

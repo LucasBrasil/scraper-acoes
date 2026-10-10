@@ -172,7 +172,7 @@ function updateAll() {
   }
 }
 
-/** Gera o bolão com sincronização automática, validação e distribuição de jogos. */
+/** Gera o bolão com validação do histórico local e distribuição de jogos. */
 function generateSyndicateLottery() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(5000)) {
@@ -181,14 +181,6 @@ function generateSyndicateLottery() {
   }
 
   try {
-    try {
-      _syncHistoryBeforeGeneration();
-      Logger.log('Histórico sincronizado com sucesso antes de gerar bolão.');
-    } catch (syncError) {
-      Logger.log(`Aviso: Não foi possível sincronizar o histórico: ${syncError.message}`);
-      SpreadsheetApp.getUi().alert(`Aviso: Não foi possível atualizar o histórico (${syncError.message}). Gerando bolão com dados existentes...`);
-    }
-
     const result = _executeSyndicateLotteryGeneration();
     const message = _formatSyndicateLotteryMessage(result);
     SpreadsheetApp.getUi().alert(message);
@@ -206,38 +198,9 @@ function generateSyndicateLottery() {
   }
 }
 
-/** Sincroniza histórico antes de gerar bolão para atualizar resultados. */
-function _syncHistoryBeforeGeneration() {
-  const historyRepository = new HistoryRepository();
-  const httpClient = new HttpClient();
-
-  const contestSource = new FallbackContestSource(
-    new CaixaMegaSenaContestSource(httpClient),
-    new IntersenaContestSource(httpClient),
-    new SomatematicaMegaSenaContestSource(httpClient)
-  );
-
-  const syncService = new HistorySyncService(
-    contestSource,
-    historyRepository,
-    historyRepository.getLatestContestNumber()
-  );
-
-  syncService.sync();
-  Logger.log('Histórico sincronizado antes de gerar bolão.');
-}
-
 /** Executa a geração do bolão usando as dependências configuradas. */
 function _executeSyndicateLotteryGeneration() {
   const historyRepository = new HistoryRepository();
-  const httpClient = new HttpClient();
-
-  const contestSource = new FallbackContestSource(
-    new CaixaMegaSenaContestSource(httpClient),
-    new IntersenaContestSource(httpClient),
-    new SomatematicaMegaSenaContestSource(httpClient)
-  );
-
   const statisticsRepository = new StatisticsRepository();
   const statisticsService = new StatisticsService(historyRepository, new StatisticsEngine(), statisticsRepository);
 
@@ -248,7 +211,6 @@ function _executeSyndicateLotteryGeneration() {
 
   const service = new SyndicateLotteryService(
     historyRepository,
-    contestSource,
     statisticsService,
     syndicateConfig
   );
@@ -269,14 +231,8 @@ function _formatSyndicateLotteryMessage(result) {
 
   return `Bolão gerado com sucesso!
 
-Sincronização:
-  Último concurso local: ${result.lastLocalContest}
-  Último concurso remoto: ${result.lastRemoteContest}
-  Concursos inseridos: ${result.contestsInserted}
-  Concursos já presentes: ${result.contestsAlreadyPresent}
-  Conflitos: ${result.syncConflicts}
-
 Histórico:
+  Último concurso local: ${result.lastLocalContest}
   Status da integridade: ${result.integrityStatus}
   Detalhes: ${result.integrityDetails}
 
