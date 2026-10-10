@@ -393,7 +393,9 @@ function insertContestResultManually() {
     const contestNumber = Number(parts[0]);
     // Se tem 8 partes, segunda é a data, números começam na terceira
     // Se tem 7 partes, números começam na segunda
-    const numberStartIndex = parts.length === 8 ? 2 : 1;
+    const hasDate = parts.length === 8;
+    const contestDate = hasDate ? parts[1] : new Date().toISOString().split('T')[0];
+    const numberStartIndex = hasDate ? 2 : 1;
     const drawnNumbers = parts.slice(numberStartIndex).map(n => Number(n));
 
     if (!Number.isInteger(contestNumber) || contestNumber < 1000 || contestNumber > 9999) {
@@ -421,7 +423,7 @@ function insertContestResultManually() {
 
     const newContest = new Contest(
       contestNumber,
-      new Date().toISOString().split('T')[0],
+      contestDate,
       drawnNumbers
     );
 
