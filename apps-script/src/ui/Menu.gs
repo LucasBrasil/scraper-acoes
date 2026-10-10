@@ -428,37 +428,7 @@ function insertContestResultManually() {
     historyRepository.save(newContest);
     Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} inserido no histórico`);
 
-    // Atualizar os resultados nos jogos do bolão
-    try {
-      const gamesRepository = new SyndicateGamesSheetRepository();
-      const gamesService = new SyndicateGamesSheetService(gamesRepository, historyRepository);
-      const updateResult = gamesService.updateResults();
-
-      Logger.log(`[insertContestResultManually] Jogos atualizados: ${updateResult.updatedLines} linhas`);
-
-      let hitsMessage = '';
-      const lastGame = gamesRepository.getGamesByContest(contestNumber).pop();
-      if (lastGame) {
-        const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Jogos Bolão');
-        const row = sheet.getRange(lastGame.rowIndex, 1, 1, 60).getValues()[0];
-        const selectedNumbers = row
-          .map((value, index) => (value !== '' ? index + 1 : null))
-          .filter(num => num !== null);
-        const drawnSet = new Set(drawnNumbers);
-        const hits = selectedNumbers.filter(num => drawnSet.has(num)).length;
-        hitsMessage = `\nAcertos: ${hits} número(s)`;
-        Logger.log(`[insertContestResultManually] Último jogo: ${selectedNumbers}, Acertos: ${hits}`);
-      }
-
-      const message = `Resultado inserido e jogos atualizados!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}${hitsMessage}`;
-      ui.alert(message);
-      Logger.log(`[insertContestResultManually] Resultado do concurso ${contestNumber} processado.${hitsMessage}`);
-
-    } catch (updateError) {
-      Logger.log(`[insertContestResultManually] Aviso: Resultado inserido mas não foi possível atualizar jogos: ${updateError.message}`);
-      const message = `Resultado inserido com sucesso!\n\nConcurso: ${contestNumber}\nNúmeros: ${drawnNumbers.join(', ')}\n\nAviso: Não foi possível atualizar os jogos automaticamente.`;
-      ui.alert(message);
-    }
+    ui.alert(`Resultado do concurso ${contestNumber} inserido no histórico!\n\nNúmeros: ${drawnNumbers.join(', ')}`);
 
   } catch (error) {
     ui.alert(`Erro ao inserir resultado: ${error.message}`);
