@@ -181,6 +181,9 @@ function generateSyndicateLottery() {
   }
 
   try {
+    const gamesService = new SyndicateGamesSheetService(new SyndicateGamesSheetRepository(), new HistoryRepository());
+    gamesService.updateResults();
+
     const result = _executeSyndicateLotteryGeneration();
     const message = _formatSyndicateLotteryMessage(result);
     SpreadsheetApp.getUi().alert(message);
