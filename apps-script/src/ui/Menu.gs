@@ -373,7 +373,9 @@ function insertContestResultManually() {
   const ui = SpreadsheetApp.getUi();
   const prompt = ui.prompt(
     'Inserir Resultado do Concurso',
-    'Digite o número do concurso e os 6 números sorteados.\n\nExemplo: 3065 5 10 15 20 30 45',
+    'Formato: concurso data números (separados por espaço)\n\n' +
+    'Com data (DD/MM/AAAA):\n3066 03/10/2026 4 6 9 13 28 48\n\n' +
+    'Sem data (usa a data de hoje):\n3066 4 6 9 13 28 48',
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -385,7 +387,7 @@ function insertContestResultManually() {
   const parts = input.split(/\s+/).map(s => s.trim()).filter(s => s);
 
   if (parts.length !== 7 && parts.length !== 8) {
-    ui.alert('Erro: Digite o número do concurso + 6 números.\n\nExemplos:\n3065 5 10 15 20 30 45\nOU\n3065 03/10/2026 5 10 15 20 30 45');
+    ui.alert('Erro: formato inválido.\n\nFormato: concurso data números\n\nCom data:\n3066 03/10/2026 4 6 9 13 28 48\n\nSem data:\n3066 4 6 9 13 28 48');
     return;
   }
 
