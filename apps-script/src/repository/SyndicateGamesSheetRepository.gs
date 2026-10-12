@@ -67,7 +67,7 @@ class SyndicateGamesSheetRepository {
           contestNumber: row[contestColIndex - 1],
           date: row[dateColIndex - 1],
           drawnNumbers: this._extractDrawnNumbers(row),
-          selectedNumbers: this._extractSelectedNumbers(row)
+          selectedNumbers: this._extractSelectedNumbersFromFormat(sheet.getRange(i + 1, 1, 1, 60))
         });
       }
     }
@@ -165,13 +165,21 @@ class SyndicateGamesSheetRepository {
     sheet.getRange(rowNumber, 1, 1, 60).setBackgrounds([backgrounds]);
   }
 
-  _extractSelectedNumbers(row) {
+  _extractSelectedNumbersFromFormat(range) {
+    const backgrounds = range.getBackgrounds()[0];
+    const fontWeights = range.getFontWeights()[0];
+    const fontStyles = range.getFontStyles()[0];
+    const selectedColor = MS_CONFIG.SELECTED_COLOR.toLowerCase();
     const selected = [];
-    for (let i = 0; i < 60; i++) {
-      if (row[i] !== '' && row[i] !== null && row[i] !== undefined) {
-        selected.push(i + 1);
+
+    for (let col = 0; col < 60; col++) {
+      const isYellow = backgrounds[col].toLowerCase() === selectedColor;
+      const isHit = fontWeights[col] === 'bold' && fontStyles[col] === 'italic';
+      if (isYellow || isHit) {
+        selected.push(col + 1);
       }
     }
+
     return selected;
   }
 
