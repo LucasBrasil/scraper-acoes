@@ -58,6 +58,22 @@ class ConfigRepository extends IConfigRepository {
     }
   }
 
+  getSyndicateParticipants() {
+    const value = Number(this.getAll()[MS_CONFIG.SYNDICATE_PARTICIPANTS_PARAMETER]);
+    if (!Number.isInteger(value) || value <= 0) {
+      throw new Error(`"${MS_CONFIG.SYNDICATE_PARTICIPANTS_PARAMETER}" na aba ${this.sheetName} deve ser um inteiro positivo.`);
+    }
+    return value;
+  }
+
+  getSyndicateValuePerParticipant() {
+    const value = Number(this.getAll()[MS_CONFIG.SYNDICATE_VALUE_PER_PARTICIPANT_PARAMETER]);
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(`"${MS_CONFIG.SYNDICATE_VALUE_PER_PARTICIPANT_PARAMETER}" na aba ${this.sheetName} deve ser um número positivo.`);
+    }
+    return value;
+  }
+
   getAll() {
     const values = this._getSheet().getDataRange().getValues();
     if (values.length <= 1) {

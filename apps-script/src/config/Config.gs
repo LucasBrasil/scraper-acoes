@@ -12,6 +12,8 @@ const MS_CONFIG = Object.freeze({
   AUTO_SYNC_ENABLED_PARAMETER: 'Sincronizar Histórico Automaticamente',
   INITIAL_HISTORY_SIZE_PARAMETER: 'Quantidade Inicial do Histórico',
   SYNC_BATCH_SIZE_PARAMETER: 'Limite de Concursos por Sincronização',
+  SYNDICATE_PARTICIPANTS_PARAMETER: 'Quantidade de participantes do bolão',
+  SYNDICATE_VALUE_PER_PARTICIPANT_PARAMETER: 'Valor por participante do bolão',
   HISTORY_HEADERS: ['Concurso', 'Data', 'Dezena 1', 'Dezena 2', 'Dezena 3', 'Dezena 4', 'Dezena 5', 'Dezena 6'],
   STATISTICS_HEADERS: ['Dezena', 'Frequência', 'Ranking', 'Atraso', 'Últimos20', 'Últimos50', 'Últimos100', 'Score', 'Ranking Score', 'Ranking Geral', 'Selecionada'],
   CRITERIA_HEADERS: ['Critério', 'Ativo', 'Peso'],

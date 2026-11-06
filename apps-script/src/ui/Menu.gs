@@ -210,7 +210,12 @@ function _executeSyndicateLotteryGeneration() {
   statisticsService.updateStatistics();
   Logger.log('Estatísticas atualizadas para geração do bolão.');
 
-  const syndicateConfig = new SyndicateConfig(8, 6.00, new MaxDezenasDistributionStrategy());
+  const configRepository = new ConfigRepository();
+  const syndicateConfig = new SyndicateConfig(
+    configRepository.getSyndicateParticipants(),
+    configRepository.getSyndicateValuePerParticipant(),
+    new MaxDezenasDistributionStrategy()
+  );
 
   const service = new SyndicateLotteryService(
     historyRepository,
