@@ -210,7 +210,7 @@ function _executeSyndicateLotteryGeneration() {
   statisticsService.updateStatistics();
   Logger.log('Estatísticas atualizadas para geração do bolão.');
 
-  const syndicateConfig = new SyndicateConfig(7, 6.00, new MaxDezenasDistributionStrategy());
+  const syndicateConfig = new SyndicateConfig(8, 6.00, new MaxDezenasDistributionStrategy());
 
   const service = new SyndicateLotteryService(
     historyRepository,
@@ -227,10 +227,13 @@ function _formatSyndicateLotteryMessage(result) {
     return `Erro na geração do bolão:\n${result.error}`;
   }
 
-  const jogosTexto = result.games.map((game, idx) => `  Jogo ${idx + 1}: ${game.join(', ')}`).join('\n');
+  const jogosTexto = result.games.map((game, idx) => `  Jogo ${idx + 1} (${game.length} dezenas): ${game.join(', ')}`).join('\n');
   const lastDrawnText = result.lastDrawnNumbers && result.lastDrawnNumbers.length > 0
     ? `  Números: ${result.lastDrawnNumbers.join(', ')}`
     : '  (Nenhum resultado disponível)';
+  const hitsText = result.lastContestResults.length > 0
+    ? result.lastContestResults.map((r, idx) => `  Jogo ${idx + 1} (${r.size} dezenas): ${r.hits} número(s)`).join('\n')
+    : '  Sem jogos registrados para este concurso';
 
   return `Bolão gerado com sucesso!
 
@@ -241,7 +244,8 @@ Histórico:
 
 Resultado do Último Concurso (Concurso ${result.lastLocalContest}):
 ${lastDrawnText}
-  Acertos: ${result.hits} número(s)
+Acertos:
+${hitsText}
 
 Seleção e Distribuição:
   Dezenas selecionadas: ${result.selectedNumbers.join(', ')}
@@ -249,7 +253,6 @@ Seleção e Distribuição:
   Valor por participante: R$ ${result.valuePerParticipant.toFixed(2)}
   Orçamento: R$ ${result.totalBudget.toFixed(2)}
   Quantidade de jogos: ${result.totalGames}
-  Dezenas por jogo: ${result.dezenaPerGame}
 
 Jogos:
 ${jogosTexto}`;

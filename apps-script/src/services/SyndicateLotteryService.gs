@@ -32,26 +32,26 @@ class SyndicateLotteryService {
       }
 
       const contests = this.historyRepository.getAll();
-      const selectedNumbers = this._selectNumbers(contests);
-      result.selectedNumbers = selectedNumbers.slice();
+      const pickOrder = this._selectNumbers(contests);
+      result.selectedNumbers = pickOrder.slice().sort((a, b) => a - b);
 
-      const games = this._distributeGames(selectedNumbers);
-      result.games = games.map(g => g.slice());
+      const games = this._distributeGames(pickOrder);
+      result.games = games;
       result.totalGames = games.length;
-      result.dezenaPerGame = 7;
       result.participants = this.syndicateConfig.participants;
       result.valuePerParticipant = this.syndicateConfig.valuePerParticipant;
       result.totalBudget = this.syndicateConfig.getBudget();
 
       if (result.lastLocalContest > 0) {
         const gamesRepository = new SyndicateGamesSheetRepository();
-        const games = gamesRepository.getGamesByContest(result.lastLocalContest);
+        const contestGames = gamesRepository.getGamesByContest(result.lastLocalContest);
 
-        if (games.length > 0) {
-          const lastGame = games[0];
-          result.lastDrawnNumbers = lastGame.drawnNumbers ? lastGame.drawnNumbers.slice() : [];
-          result.hits = this._calculateHits(lastGame.selectedNumbers, result.lastDrawnNumbers);
-          Logger.log(`[generate] Last contest from games sheet: ${result.lastLocalContest}, Drawn: [${result.lastDrawnNumbers}], Selected: [${selectedNumbers}], Hits: ${result.hits}`);
+        if (contestGames.length > 0) {
+          result.lastDrawnNumbers = contestGames[0].drawnNumbers ? contestGames[0].drawnNumbers.slice() : [];
+          result.lastContestResults = contestGames.map(game => ({
+            size: game.selectedNumbers.length,
+            hits: this._calculateHits(game.selectedNumbers, result.lastDrawnNumbers)
+          }));
         }
       }
 
@@ -134,7 +134,7 @@ class SyndicateLotteryService {
       }
     }
 
-    return selectedNumbers.sort((a, b) => a - b);
+    return selectedNumbers;
   }
 
   _calculatePairBonus(candidate, referenceNumber) {
@@ -191,11 +191,18 @@ class SyndicateLotteryService {
     return { mostFrequent: pairsWithRef[0].number, leastFrequent: pairsWithRef[pairsWithRef.length - 1].number };
   }
 
-  _distributeGames(selectedNumbers) {
-    const syndicateDistribution = this.syndicateConfig.getDistribution();
-    return syndicateDistribution.games7 > 0
-      ? [selectedNumbers]
-      : [];
+  _distributeGames(pickOrder) {
+    const distribution = this.syndicateConfig.getDistribution();
+    const games = [];
+
+    if (distribution.games7 > 0) {
+      games.push(pickOrder.slice(0, 7).sort((a, b) => a - b));
+    }
+    if (distribution.games6 > 0) {
+      games.push(pickOrder.slice(0, 6).sort((a, b) => a - b));
+    }
+
+    return games;
   }
 
   _getCriteriasAsMap() {

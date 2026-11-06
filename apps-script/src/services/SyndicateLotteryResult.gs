@@ -8,14 +8,13 @@ class SyndicateLotteryResult {
     this.selectedNumbers = [];
     this.games = [];
     this.totalGames = 0;
-    this.dezenaPerGame = 0;
     this.participants = 0;
     this.valuePerParticipant = 0;
     this.totalBudget = 0;
     this.alreadyGenerated = false;
     this.error = null;
     this.lastDrawnNumbers = [];
-    this.hits = 0;
+    this.lastContestResults = [];
   }
 
   isSuccess() {
@@ -41,7 +40,7 @@ class SyndicateLotteryResult {
            `  Participantes: ${this.participants} × R$ ${this.valuePerParticipant.toFixed(2)}\n` +
            `  Orçamento: R$ ${this.totalBudget.toFixed(2)}\n` +
            `  Dezenas selecionadas: ${this.selectedNumbers.join(', ')}\n` +
-           `  Distribuição: ${this.totalGames} jogo(s) de ${this.dezenaPerGame} dezenas`;
+           `  Distribuição: ${this.totalGames} jogo(s)`;
   }
 
   auditLog() {
@@ -63,11 +62,10 @@ class SyndicateLotteryResult {
     }
     log.push('');
     log.push('=== SELEÇÃO E DISTRIBUIÇÃO ===');
-    log.push(`Dezenas selecionadas (7): ${this.selectedNumbers.join(', ')}`);
+    log.push(`Dezenas selecionadas (${this.selectedNumbers.length}): ${this.selectedNumbers.join(', ')}`);
     log.push(`Participantes: ${this.participants}`);
     log.push(`Valor por participante: R$ ${this.valuePerParticipant.toFixed(2)}`);
     log.push(`Total de jogos: ${this.totalGames}`);
-    log.push(`Dezenas por jogo: ${this.dezenaPerGame}`);
     log.push(`Orçamento total: R$ ${this.totalBudget.toFixed(2)}`);
     if (this.games.length > 0) {
       log.push('');
