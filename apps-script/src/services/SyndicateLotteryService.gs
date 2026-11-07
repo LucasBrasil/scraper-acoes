@@ -34,7 +34,7 @@ class SyndicateLotteryService {
 
       const contests = this.historyRepository.getAll();
       const pickOrder = this._selectNumbers(contests);
-      result.selectedNumbers = pickOrder.slice().sort((a, b) => a - b);
+      result.selectedNumbers = pickOrder.slice(0, 7).sort((a, b) => a - b);
 
       const games = this._distributeGames(pickOrder);
       result.games = games;
@@ -104,7 +104,9 @@ class SyndicateLotteryService {
 
     Logger.log('[_selectNumbers] Starting sequential selection with pair frequency');
 
-    for (let position = 0; position < 7; position++) {
+    const pickCount = this._countNumbersToPick();
+
+    for (let position = 0; position < pickCount; position++) {
       let bestNumber = null;
       let bestScore = -Infinity;
 
@@ -194,15 +196,22 @@ class SyndicateLotteryService {
     return { mostFrequent: pairsWithRef[0].number, leastFrequent: pairsWithRef[pairsWithRef.length - 1].number };
   }
 
+  _countNumbersToPick() {
+    const distribution = this.syndicateConfig.getDistribution();
+    return (distribution.games7 > 0 ? 7 : 0) + (distribution.games6 > 0 ? 6 : 0);
+  }
+
   _distributeGames(pickOrder) {
     const distribution = this.syndicateConfig.getDistribution();
     const games = [];
+    let offset = 0;
 
     if (distribution.games7 > 0) {
-      games.push(pickOrder.slice(0, 7).sort((a, b) => a - b));
+      games.push(pickOrder.slice(offset, offset + 7).sort((a, b) => a - b));
+      offset += 7;
     }
     if (distribution.games6 > 0) {
-      games.push(pickOrder.slice(0, 6).sort((a, b) => a - b));
+      games.push(pickOrder.slice(offset, offset + 6).sort((a, b) => a - b));
     }
 
     return games;
