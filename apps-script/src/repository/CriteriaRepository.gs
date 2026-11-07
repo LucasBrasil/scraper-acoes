@@ -21,7 +21,9 @@ class CriteriaRepository extends ICriteriaRepository {
         if (!name || !Number.isFinite(weight)) {
           throw new Error(`Linha ${rowOffset + 2} da aba ${this.sheetName} é inválida.`);
         }
-        configurations[name] = { enabled: row[indexes.enabled] === true, weight };
+        const quantityCell = indexes.quantity === -1 ? '' : row[indexes.quantity];
+        const quantity = quantityCell === '' ? null : Number(quantityCell);
+        configurations[name] = { enabled: row[indexes.enabled] === true, weight, quantity };
         return configurations;
       }, {});
   }
@@ -43,6 +45,11 @@ class CriteriaRepository extends ICriteriaRepository {
     if (Object.keys(indexes).some((header) => indexes[header] === -1)) {
       throw new Error(`A aba "${this.sheetName}" deve conter os cabeçalhos: ${expectedHeaders.join(', ')}.`);
     }
-    return { name: indexes.Critério, enabled: indexes.Ativo, weight: indexes.Peso };
+    return {
+      name: indexes.Critério,
+      enabled: indexes.Ativo,
+      weight: indexes.Peso,
+      quantity: headers.indexOf(MS_CONFIG.CRITERIA_QUANTITY_HEADER)
+    };
   }
 }

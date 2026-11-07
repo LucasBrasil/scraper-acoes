@@ -217,10 +217,13 @@ function _executeSyndicateLotteryGeneration() {
     new MaxDezenasDistributionStrategy()
   );
 
+  const scoringConfig = SyndicateScoringConfig.fromCriteria(new CriteriaRepository().getAll());
+
   const service = new SyndicateLotteryService(
     historyRepository,
     statisticsService,
-    syndicateConfig
+    syndicateConfig,
+    scoringConfig
   );
 
   return service.generate();

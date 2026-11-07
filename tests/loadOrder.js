@@ -16,7 +16,8 @@ module.exports = {
     'SelectionResult.gs', 'TopSelectionStrategy.gs', 'CriteriaService.gs', 'DashboardService.gs',
     'HistorySyncService.gs', 'HistoryValidationService.gs', 'PipelineService.gs',
     'RankingService.gs', 'ScoreService.gs', 'SelectionService.gs', 'StatisticsService.gs',
-    'SyndicateGamesSheetService.gs', 'SyndicateLotteryResult.gs', 'SyndicateLotteryService.gs',
+    'SyndicateGamesSheetService.gs', 'SyndicateLotteryResult.gs', 'SyndicateScoringConfig.gs',
+    'SyndicateLotteryService.gs',
     'DateNormalizer.gs', 'Menu.gs'
   ],
   testFiles: [

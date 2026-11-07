@@ -1,9 +1,10 @@
 /** Serviço de geração de bolão com base no histórico local e nova estratégia de score. */
 class SyndicateLotteryService {
-  constructor(historyRepository, statisticsService, syndicateConfig) {
+  constructor(historyRepository, statisticsService, syndicateConfig, scoringConfig) {
     this.historyRepository = historyRepository;
     this.statisticsService = statisticsService;
     this.syndicateConfig = syndicateConfig;
+    this.scoringConfig = scoringConfig;
   }
 
   /**
@@ -88,10 +89,10 @@ class SyndicateLotteryService {
     strategiesRepo.replaceAll(statisticDTOs);
 
     const config = new NewScoreStrategyConfig(
-      { count: 10, weight: 2 },
-      { count: 10, weight: 1 },
-      { weight: 1 },
-      { weight: 1 }
+      this.scoringConfig.topFrequent,
+      this.scoringConfig.bottomFrequent,
+      this.scoringConfig.minRecurrence,
+      this.scoringConfig.lastDrawn
     );
 
     const lastDrawn = contests.length > 0 ? contests[contests.length - 1].drawnNumbers : [];
@@ -141,11 +142,13 @@ class SyndicateLotteryService {
     const { mostFrequent, leastFrequent } = this._findPairFrequencies(candidate, referenceNumber);
 
     if (candidate === mostFrequent) {
-      Logger.log(`    -> Pair bonus for ${candidate}: +2 (most frequent with ${referenceNumber})`);
-      return 2;
+      const weight = this.scoringConfig.pairMostFrequent.weight;
+      Logger.log(`    -> Pair bonus for ${candidate}: ${weight} (most frequent with ${referenceNumber})`);
+      return weight;
     } else if (candidate === leastFrequent) {
-      Logger.log(`    -> Pair bonus for ${candidate}: -1 (least frequent with ${referenceNumber})`);
-      return -1;
+      const weight = this.scoringConfig.pairLeastFrequent.weight;
+      Logger.log(`    -> Pair bonus for ${candidate}: ${weight} (least frequent with ${referenceNumber})`);
+      return weight;
     }
 
     return 0;

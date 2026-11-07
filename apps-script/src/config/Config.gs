@@ -17,6 +17,15 @@ const MS_CONFIG = Object.freeze({
   HISTORY_HEADERS: ['Concurso', 'Data', 'Dezena 1', 'Dezena 2', 'Dezena 3', 'Dezena 4', 'Dezena 5', 'Dezena 6'],
   STATISTICS_HEADERS: ['Dezena', 'Frequência', 'Ranking', 'Atraso', 'Últimos20', 'Últimos50', 'Últimos100', 'Score', 'Ranking Score', 'Ranking Geral', 'Selecionada'],
   CRITERIA_HEADERS: ['Critério', 'Ativo', 'Peso'],
+  CRITERIA_QUANTITY_HEADER: 'Quantidade',
+  SYNDICATE_CRITERIA: Object.freeze({
+    TOP_FREQUENT: 'Dezenas mais frequentes',
+    BOTTOM_FREQUENT: 'Dezenas menos frequentes',
+    MIN_DELAY: 'Menor atraso',
+    LAST_DRAWN: 'Dezena do último sorteio',
+    PAIR_MOST_FREQUENT: 'Par mais frequente',
+    PAIR_LEAST_FREQUENT: 'Par menos frequente'
+  }),
   CONFIG_HEADERS: ['Parâmetro', 'Valor'],
   LOG_HEADERS: ['Execution Id', 'Step', 'Start', 'Finish', 'Duration (ms)', 'Result', 'Message'],
   SELECTED_COLOR: '#FFFF00',
