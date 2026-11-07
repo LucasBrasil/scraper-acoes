@@ -389,7 +389,8 @@ function insertContestResultManually() {
     'Inserir Resultado do Concurso',
     'Formato: concurso data números (separados por espaço)\n\n' +
     'Com data (DD/MM/AAAA):\n3066 03/10/2026 4 6 9 13 28 48\n\n' +
-    'Sem data (usa a data de hoje):\n3066 4 6 9 13 28 48',
+    'Sem data (usa a data de hoje):\n3066 4 6 9 13 28 48\n\n' +
+    'Formato colado:\n3082 (06/11/2026)041623243844',
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -398,21 +399,17 @@ function insertContestResultManually() {
   }
 
   const input = prompt.getResponseText().trim();
-  const parts = input.split(/\s+/).map(s => s.trim()).filter(s => s);
+  const parsed = _parseManualContestInput(input);
 
-  if (parts.length !== 7 && parts.length !== 8) {
-    ui.alert('Erro: formato inválido.\n\nFormato: concurso data números\n\nCom data:\n3066 03/10/2026 4 6 9 13 28 48\n\nSem data:\n3066 4 6 9 13 28 48');
+  if (!parsed) {
+    ui.alert('Erro: formato inválido.\n\nFormato: concurso data números\n\nCom data:\n3066 03/10/2026 4 6 9 13 28 48\n\nSem data:\n3066 4 6 9 13 28 48\n\nFormato colado:\n3082 (06/11/2026)041623243844');
     return;
   }
 
   try {
-    const contestNumber = Number(parts[0]);
-    // Se tem 8 partes, segunda é a data, números começam na terceira
-    // Se tem 7 partes, números começam na segunda
-    const hasDate = parts.length === 8;
-    const contestDate = hasDate ? parts[1] : new Date().toISOString().split('T')[0];
-    const numberStartIndex = hasDate ? 2 : 1;
-    const drawnNumbers = parts.slice(numberStartIndex).map(n => Number(n));
+    const contestNumber = parsed.contestNumber;
+    const drawnNumbers = parsed.drawnNumbers;
+    const contestDate = parsed.date || new Date().toISOString().split('T')[0];
 
     if (!Number.isInteger(contestNumber) || contestNumber < 1000 || contestNumber > 9999) {
       throw new Error('Número do concurso deve ser entre 1000 e 9999');
@@ -453,4 +450,28 @@ function insertContestResultManually() {
     Logger.log(`[insertContestResultManually] ERRO: ${error.message}`);
     throw error;
   }
+}
+
+/** Interpreta a entrada manual: concurso, data opcional e dezenas separadas ou coladas. */
+function _parseManualContestInput(input) {
+  const compact = input.match(/^(\d{4})\s*\(?\s*(\d{2}\/\d{2}\/\d{4})\s*\)?\s*(\d{12})$/);
+  if (compact) {
+    return {
+      contestNumber: Number(compact[1]),
+      date: compact[2],
+      drawnNumbers: compact[3].match(/\d{2}/g).map(Number)
+    };
+  }
+
+  const parts = input.split(/\s+/).filter(s => s);
+  if (parts.length !== 7 && parts.length !== 8) {
+    return null;
+  }
+
+  const hasDate = parts.length === 8;
+  return {
+    contestNumber: Number(parts[0]),
+    date: hasDate ? parts[1] : null,
+    drawnNumbers: parts.slice(hasDate ? 2 : 1).map(Number)
+  };
 }
