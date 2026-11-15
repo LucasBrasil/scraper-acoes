@@ -239,6 +239,9 @@ function _formatSyndicateLotteryMessage(result) {
   const lastDrawnText = result.lastDrawnNumbers && result.lastDrawnNumbers.length > 0
     ? `  Números: ${result.lastDrawnNumbers.join(', ')}`
     : '  (Nenhum resultado disponível)';
+  const breakdownText = result.scoreBreakdown.map(b =>
+    `  ${b.position}. ${b.number} | base ${b.base} (${b.components.join(', ') || 'sem componentes'}) | par ${b.reference === null ? '-' : `com ${b.reference}`} ${b.pair >= 0 ? '+' : ''}${b.pair} | total ${b.total}`
+  ).join('\n');
   const hitsText = result.lastContestResults.length > 0
     ? result.lastContestResults.map((r, idx) => `  Jogo ${idx + 1} (${r.size} dezenas): ${r.hits} número(s)`).join('\n')
     : '  Sem jogos registrados para este concurso';
@@ -261,6 +264,9 @@ Seleção e Distribuição:
   Valor por participante: R$ ${result.valuePerParticipant.toFixed(2)}
   Orçamento: R$ ${result.totalBudget.toFixed(2)}
   Quantidade de jogos: ${result.totalGames}
+
+Pontuação das dezenas escolhidas:
+${breakdownText}
 
 Jogos:
 ${jogosTexto}`;

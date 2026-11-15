@@ -35,6 +35,7 @@ class SyndicateLotteryService {
       const contests = this.historyRepository.getAll();
       const pickOrder = this._selectNumbers(contests);
       result.selectedNumbers = pickOrder.slice(0, 7).sort((a, b) => a - b);
+      result.scoreBreakdown = this.scoreBreakdown;
 
       const games = this._distributeGames(pickOrder);
       result.games = games;
@@ -100,6 +101,7 @@ class SyndicateLotteryService {
     const baseCalculations = calculator.calculate();
 
     const selectedNumbers = [];
+    this.scoreBreakdown = [];
     const remainingCandidates = new Set(baseCalculations.map(c => c.getNumber()));
 
     Logger.log('[_selectNumbers] Starting sequential selection with pair frequency');
@@ -131,6 +133,16 @@ class SyndicateLotteryService {
       }
 
       if (bestNumber !== null) {
+        const baseCalculation = baseCalculations.find(c => c.getNumber() === bestNumber);
+        this.scoreBreakdown.push({
+          position: position + 1,
+          number: bestNumber,
+          reference: referenceNumber,
+          components: baseCalculation.getComponents().map(c => `${c.getName()} ${c.getWeight() >= 0 ? '+' : ''}${c.getWeight()}`),
+          base: baseCalculation.getTotalScore(),
+          pair: bestScore - baseCalculation.getTotalScore(),
+          total: bestScore
+        });
         selectedNumbers.push(bestNumber);
         remainingCandidates.delete(bestNumber);
         Logger.log(`[_selectNumbers] Selected: ${bestNumber} (score=${bestScore})`);

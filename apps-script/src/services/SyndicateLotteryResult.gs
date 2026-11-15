@@ -15,6 +15,7 @@ class SyndicateLotteryResult {
     this.error = null;
     this.lastDrawnNumbers = [];
     this.lastContestResults = [];
+    this.scoreBreakdown = [];
   }
 
   isSuccess() {
