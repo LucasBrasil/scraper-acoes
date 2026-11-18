@@ -112,31 +112,39 @@ class SyndicateGamesSheetRepository {
     const sheet = this._getSheet();
     const selectedSet = new Set(selectedNumbers);
     const drawnSet = new Set(drawnNumbers);
+    const values = sheet.getRange(rowNumber, 1, 1, 60).getValues()[0];
+    const backgrounds = [];
+    const fontWeights = [];
+    const fontStyles = [];
 
-    for (let col = 1; col <= 60; col++) {
-      const cell = sheet.getRange(rowNumber, col);
-      const number = Number(cell.getValue());
+    for (let col = 0; col < 60; col++) {
+      const number = Number(values[col]);
       const isSelected = selectedSet.has(number);
       const isDrawn = drawnSet.has(number);
 
       if (isSelected && isDrawn) {
-        cell.setBackground(MS_CONFIG.HIT_COLOR);
-        cell.setFontWeight('bold');
-        cell.setFontStyle('italic');
-      } else if (isSelected && !isDrawn) {
-        cell.setBackground(MS_CONFIG.SELECTED_COLOR);
-        cell.setFontWeight('normal');
-        cell.setFontStyle('normal');
-      } else if (!isSelected && isDrawn) {
-        cell.setBackground(MS_CONFIG.HIT_COLOR);
-        cell.setFontWeight('normal');
-        cell.setFontStyle('normal');
+        backgrounds.push(MS_CONFIG.HIT_COLOR);
+        fontWeights.push('bold');
+        fontStyles.push('italic');
+      } else if (isSelected) {
+        backgrounds.push(MS_CONFIG.SELECTED_COLOR);
+        fontWeights.push('normal');
+        fontStyles.push('normal');
+      } else if (isDrawn) {
+        backgrounds.push(MS_CONFIG.HIT_COLOR);
+        fontWeights.push('normal');
+        fontStyles.push('normal');
       } else {
-        cell.setBackground('#FFFFFF');
-        cell.setFontWeight('normal');
-        cell.setFontStyle('normal');
+        backgrounds.push('#FFFFFF');
+        fontWeights.push('normal');
+        fontStyles.push('normal');
       }
     }
+
+    const range = sheet.getRange(rowNumber, 1, 1, 60);
+    range.setBackgrounds([backgrounds]);
+    range.setFontWeights([fontWeights]);
+    range.setFontStyles([fontStyles]);
   }
 
   _gameToRow(game) {

@@ -107,12 +107,14 @@ class SyndicateLotteryService {
     Logger.log('[_selectNumbers] Starting sequential selection with pair frequency');
 
     const pickCount = this._countNumbersToPick();
+    const pairs = this._loadPairs();
 
     for (let position = 0; position < pickCount; position++) {
       let bestNumber = null;
       let bestScore = -Infinity;
 
       const referenceNumber = position > 0 ? selectedNumbers[selectedNumbers.length - 1] : null;
+      const pairExtremes = referenceNumber !== null ? this._findPairExtremes(pairs, referenceNumber) : null;
       Logger.log(`[_selectNumbers] Position ${position + 1}, Reference: ${referenceNumber}`);
 
       for (const candidate of remainingCandidates) {
@@ -120,7 +122,7 @@ class SyndicateLotteryService {
         let pairBonus = 0;
 
         if (referenceNumber !== null) {
-          pairBonus = this._calculatePairBonus(candidate, referenceNumber);
+          pairBonus = this._calculatePairBonus(candidate, pairExtremes, referenceNumber);
         }
 
         const totalScore = baseScore + pairBonus;
@@ -152,8 +154,8 @@ class SyndicateLotteryService {
     return selectedNumbers;
   }
 
-  _calculatePairBonus(candidate, referenceNumber) {
-    const { mostFrequent, leastFrequent } = this._findPairFrequencies(candidate, referenceNumber);
+  _calculatePairBonus(candidate, pairExtremes, referenceNumber) {
+    const { mostFrequent, leastFrequent } = pairExtremes;
 
     if (candidate === mostFrequent) {
       const weight = this.scoringConfig.pairMostFrequent.weight;
@@ -168,25 +170,22 @@ class SyndicateLotteryService {
     return 0;
   }
 
-  _findPairFrequencies(candidate, referenceNumber) {
-    const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = spreadsheet.getSheetByName('Pares');
-
+  _loadPairs() {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Pares');
     if (!sheet) {
-      return { mostFrequent: null, leastFrequent: null };
+      return [];
     }
 
-    const values = sheet.getDataRange().getValues();
-    if (values.length <= 1) {
-      return { mostFrequent: null, leastFrequent: null };
-    }
+    return sheet.getDataRange().getValues().slice(1).map(row => ({
+      num1: row[0],
+      num2: row[1],
+      frequency: row[2]
+    }));
+  }
 
+  _findPairExtremes(pairs, referenceNumber) {
     const pairsWithRef = [];
-    for (let i = 1; i < values.length; i++) {
-      const num1 = values[i][0];
-      const num2 = values[i][1];
-      const frequency = values[i][2];
-
+    for (const { num1, num2, frequency } of pairs) {
       if ((num1 === referenceNumber && num2 !== referenceNumber) ||
           (num2 === referenceNumber && num1 !== referenceNumber)) {
         const otherNumber = num1 === referenceNumber ? num2 : num1;
