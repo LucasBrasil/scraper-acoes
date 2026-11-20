@@ -265,11 +265,11 @@ Seleção e Distribuição:
   Orçamento: R$ ${result.totalBudget.toFixed(2)}
   Quantidade de jogos: ${result.totalGames}
 
-Pontuação das dezenas escolhidas:
-${breakdownText}
-
 Jogos:
-${jogosTexto}`;
+${jogosTexto}
+
+Pontuação das dezenas escolhidas:
+${breakdownText}`;
 }
 
 /** Registra o resultado no Logger para auditoria. */
