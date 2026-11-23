@@ -259,14 +259,12 @@ Acertos:
 ${hitsText}
 
 Seleção e Distribuição:
-  Dezenas selecionadas: ${result.selectedNumbers.join(', ')}
+  Dezenas selecionadas:
+${jogosTexto}
   Participantes: ${result.participants}
   Valor por participante: R$ ${result.valuePerParticipant.toFixed(2)}
   Orçamento: R$ ${result.totalBudget.toFixed(2)}
   Quantidade de jogos: ${result.totalGames}
-
-Jogos:
-${jogosTexto}
 
 Pontuação das dezenas escolhidas:
 ${breakdownText}`;
