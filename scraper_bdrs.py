@@ -53,6 +53,9 @@ MAPA_TICKERS = {
     'JEPI39': 'JEPI',
     'AURA33': 'AUGO',
     'JBSS32': 'JBS',
+    'ANTH34': None,  # Anthropic - empresa privada, sem dados públicos
+    'A1IV34': 'AIV',
+    'STOC34': 'STNE',
 }
 
 def conectar():
